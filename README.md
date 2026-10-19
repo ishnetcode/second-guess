@@ -74,6 +74,39 @@ Synthetic match generator ──► Microsoft Fabric (Eventstream → Eventhouse
 - **Azure Container Apps** for hosting
 - **GitHub, GitHub Copilot and GitHub Actions** for development and CI/CD
 
+## Built with GitHub Copilot
+
+The repository ships a GitHub Copilot toolkit in `.github/`, so every contributor (human or AI)
+works to the same rules.
+
+**Custom agents** (`.github/agents/`) form a development team with handoffs between them:
+
+| Agent | Role | Hands off to |
+|---|---|---|
+| **Architect** | Plans a feature against the codebase and hackathon criteria; never edits code | Builder |
+| **Builder** | Implements in small steps, building and verifying after each one | Match QA, Hackathon Judge |
+| **Match QA** | Generates matches and checks the stats look like real football | Builder (to fix issues) |
+| **Hackathon Judge** | Scores the repo against the rules and judging criteria | Architect (to plan improvements) |
+| **Feature Lead** | Orchestrates the others as subagents to deliver a feature end to end | — |
+
+**Skills** (`.github/skills/`) package reusable know-how:
+`match-realism-check`, `synthetic-data-rules` and `hackathon-submission`.
+
+**Slash commands** (`.github/prompts/`):
+
+| Command | What it does |
+|---|---|
+| `/generate-match` | Generates a match and writes a short report, including a good "what if?" moment |
+| `/new-event-type` | Adds a new event type to the generator, following the data rules |
+| `/judge-check` | Scores the project against the judging criteria |
+| `/sync-readme` | Updates the README so it matches the code |
+
+**Instructions:** `.github/copilot-instructions.md` holds project-wide rules (synthetic data only,
+coordinate convention, determinism, no secrets), and `.github/instructions/` adds rules per file type.
+
+**Workflows:** `ci.yml` builds the solution, generates sample matches and flags unrealistic stats on
+every push; `copilot-setup-steps.yml` prepares the environment for the Copilot coding agent.
+
 ## Explainable by design
 
 Every answer shows its working: the original decision, the alternatives considered, the simulated
@@ -82,6 +115,9 @@ probabilities and the source event IDs. Simulations are presented as estimates, 
 ## Project structure
 
 ```
+.github/
+  agents/ skills/ prompts/ instructions/   GitHub Copilot toolkit (see "Built with GitHub Copilot")
+  workflows/               CI and Copilot coding agent setup
 src/
   SecondGuess.Domain/      Shared types, pitch geometry and football models (xG, pass success, pressure)
   SecondGuess.Generator/   Synthetic match generator and real-time replayer
@@ -153,6 +189,7 @@ which attacks towards x = 105 (goal centre at 105, 34).
 ## Roadmap
 
 - [x] Synthetic match generator and replayer
+- [x] GitHub Copilot toolkit (agents, skills, slash commands) and CI
 - [ ] Stream events to Microsoft Fabric Real-Time Intelligence
 - [ ] Simulation engine exposed as an MCP server
 - [ ] Multi-agent what-if system (Microsoft Agent Framework)

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build SecondGuess.slnx --configuration Release
+
+      - name: Generate sample matches
+        run: |
+          dotnet run --project src/SecondGuess.Generator --configuration Release --no-build -- \
+            generate --seed 100 --matches 5 --out artifacts/ci | tee artifacts-summary.txt
+
+      - name: Check match realism
+        run: |
+          if grep -q "CHECK" artifacts-summary.txt; then
+            echo "::warning title=Match realism::Some generated metrics are outside realistic ranges. See the job log."
+            grep "CHECK" artifacts-summary.txt
+          else
+            echo "All generated metrics are within realistic ranges."
+          fi
+
+      - name: Upload generated matches
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-matches
+          path: artifacts/ci
