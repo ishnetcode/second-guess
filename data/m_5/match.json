@@ -1,0 +1,209 @@
+{
+  "matchId": "m_5",
+  "seed": 5,
+  "competition": "Synthetic League",
+  "venue": "Northvale Park",
+  "kickOff": "2026-10-24T15:00:00+00:00",
+  "home": {
+    "id": "home",
+    "name": "Northvale Rovers",
+    "shortName": "NVR",
+    "formation": "4-3-3",
+    "style": {
+      "directness": 0.7864445171685336,
+      "pressIntensity": 0.7051466025896775,
+      "shootingAppetite": 1.0329207009321524
+    },
+    "players": [
+      {
+        "id": "h_01",
+        "name": "Jovan Ellery",
+        "number": 1,
+        "position": "GK",
+        "baseX": 5,
+        "baseY": 34
+      },
+      {
+        "id": "h_02",
+        "name": "Tomas Holloway",
+        "number": 2,
+        "position": "RB",
+        "baseX": 25,
+        "baseY": 58
+      },
+      {
+        "id": "h_04",
+        "name": "Tomas Dunmore",
+        "number": 4,
+        "position": "RCB",
+        "baseX": 22,
+        "baseY": 42
+      },
+      {
+        "id": "h_05",
+        "name": "Devan Zeller",
+        "number": 5,
+        "position": "LCB",
+        "baseX": 22,
+        "baseY": 26
+      },
+      {
+        "id": "h_03",
+        "name": "Ilan Quarrie",
+        "number": 3,
+        "position": "LB",
+        "baseX": 25,
+        "baseY": 10
+      },
+      {
+        "id": "h_08",
+        "name": "Dario Marlow",
+        "number": 8,
+        "position": "RCM",
+        "baseX": 42,
+        "baseY": 46
+      },
+      {
+        "id": "h_06",
+        "name": "Emre Ingleby",
+        "number": 6,
+        "position": "CM",
+        "baseX": 38,
+        "baseY": 34
+      },
+      {
+        "id": "h_10",
+        "name": "Cyrus Dunmore",
+        "number": 10,
+        "position": "LCM",
+        "baseX": 42,
+        "baseY": 22
+      },
+      {
+        "id": "h_07",
+        "name": "Sami Jessop",
+        "number": 7,
+        "position": "RW",
+        "baseX": 62,
+        "baseY": 58
+      },
+      {
+        "id": "h_09",
+        "name": "Callum Ingleby",
+        "number": 9,
+        "position": "ST",
+        "baseX": 66,
+        "baseY": 34
+      },
+      {
+        "id": "h_11",
+        "name": "Devan Radley",
+        "number": 11,
+        "position": "LW",
+        "baseX": 62,
+        "baseY": 10
+      }
+    ]
+  },
+  "away": {
+    "id": "away",
+    "name": "Eastport Athletic",
+    "shortName": "EPA",
+    "formation": "4-2-3-1",
+    "style": {
+      "directness": 0.6401328927862577,
+      "pressIntensity": 0.49741561923984406,
+      "shootingAppetite": 1.01869293429514
+    },
+    "players": [
+      {
+        "id": "a_01",
+        "name": "Jovan Okoro",
+        "number": 1,
+        "position": "GK",
+        "baseX": 5,
+        "baseY": 34
+      },
+      {
+        "id": "a_02",
+        "name": "Sami Castell",
+        "number": 2,
+        "position": "RB",
+        "baseX": 25,
+        "baseY": 58
+      },
+      {
+        "id": "a_04",
+        "name": "Emre Yardley",
+        "number": 4,
+        "position": "RCB",
+        "baseX": 22,
+        "baseY": 42
+      },
+      {
+        "id": "a_05",
+        "name": "Oren Belmonte",
+        "number": 5,
+        "position": "LCB",
+        "baseX": 22,
+        "baseY": 26
+      },
+      {
+        "id": "a_03",
+        "name": "Emre Castell",
+        "number": 3,
+        "position": "LB",
+        "baseX": 25,
+        "baseY": 10
+      },
+      {
+        "id": "a_06",
+        "name": "Yusuf Varga",
+        "number": 6,
+        "position": "RDM",
+        "baseX": 38,
+        "baseY": 42
+      },
+      {
+        "id": "a_08",
+        "name": "Femi Ashdown",
+        "number": 8,
+        "position": "LDM",
+        "baseX": 38,
+        "baseY": 26
+      },
+      {
+        "id": "a_07",
+        "name": "Emre Varga",
+        "number": 7,
+        "position": "RAM",
+        "baseX": 58,
+        "baseY": 56
+      },
+      {
+        "id": "a_10",
+        "name": "Pavel Abara",
+        "number": 10,
+        "position": "CAM",
+        "baseX": 56,
+        "baseY": 34
+      },
+      {
+        "id": "a_11",
+        "name": "Devan Pellham",
+        "number": 11,
+        "position": "LAM",
+        "baseX": 58,
+        "baseY": 12
+      },
+      {
+        "id": "a_09",
+        "name": "Ugo Castell",
+        "number": 9,
+        "position": "ST",
+        "baseX": 68,
+        "baseY": 34
+      }
+    ]
+  }
+}

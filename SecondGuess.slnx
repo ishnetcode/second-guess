@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SecondGuess.Domain/SecondGuess.Domain.csproj" />
+    <Project Path="src/SecondGuess.Generator/SecondGuess.Generator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SecondGuess.Domain.Tests/SecondGuess.Domain.Tests.csproj" />
+    <Project Path="tests/SecondGuess.Generator.Tests/SecondGuess.Generator.Tests.csproj" />
+  </Folder>
+</Solution>
