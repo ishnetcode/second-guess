@@ -45,6 +45,7 @@ public static class MatchReplayer
             EventTypes.Carry => $"[{e.MatchClock}] {score}  carry  {Name(e.PlayerId)} ({e.Outcome})",
             EventTypes.Tackle => $"[{e.MatchClock}] {score}  tackle {Name(e.PlayerId)} wins the ball",
             EventTypes.Interception => $"[{e.MatchClock}] {score}  intercept {Name(e.PlayerId)}",
+            EventTypes.BallRecovery => $"[{e.MatchClock}] {score}  recovery {Name(e.PlayerId)} picks up the loose ball",
             EventTypes.Pressure => $"[{e.MatchClock}] {score}  press  {Name(e.PlayerId)} (pressure {e.Pressure:0.00})",
             EventTypes.PossessionChange => $"[{e.MatchClock}] {score}  -- possession {e.TeamId} ({e.Outcome})",
             _ => $"[{e.MatchClock}] {score}  {e.Type.ToUpperInvariant()} (period {e.Period})"

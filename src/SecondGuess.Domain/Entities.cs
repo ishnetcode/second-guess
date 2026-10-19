@@ -69,4 +69,5 @@ public static class EventTypes
     public const string Pressure = "pressure";
     public const string Tackle = "tackle";
     public const string Interception = "interception";
+    public const string BallRecovery = "ball_recovery";
 }

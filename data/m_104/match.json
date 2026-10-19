@@ -1,0 +1,209 @@
+{
+  "matchId": "m_104",
+  "seed": 104,
+  "competition": "Synthetic League",
+  "venue": "Northvale Park",
+  "kickOff": "2026-10-24T15:00:00+00:00",
+  "home": {
+    "id": "home",
+    "name": "Northvale Rovers",
+    "shortName": "NVR",
+    "formation": "4-3-3",
+    "style": {
+      "directness": 0.7046170969659421,
+      "pressIntensity": 0.4581604260619596,
+      "shootingAppetite": 0.9307415012272324
+    },
+    "players": [
+      {
+        "id": "h_01",
+        "name": "Gael Holloway",
+        "number": 1,
+        "position": "GK",
+        "baseX": 5,
+        "baseY": 34
+      },
+      {
+        "id": "h_02",
+        "name": "Cyrus Fairbank",
+        "number": 2,
+        "position": "RB",
+        "baseX": 25,
+        "baseY": 58
+      },
+      {
+        "id": "h_04",
+        "name": "Mats Lindqvist",
+        "number": 4,
+        "position": "RCB",
+        "baseX": 22,
+        "baseY": 42
+      },
+      {
+        "id": "h_05",
+        "name": "Cyrus Pellham",
+        "number": 5,
+        "position": "LCB",
+        "baseX": 22,
+        "baseY": 26
+      },
+      {
+        "id": "h_03",
+        "name": "Cyrus Castell",
+        "number": 3,
+        "position": "LB",
+        "baseX": 25,
+        "baseY": 10
+      },
+      {
+        "id": "h_08",
+        "name": "Dario Tarrant",
+        "number": 8,
+        "position": "RCM",
+        "baseX": 42,
+        "baseY": 46
+      },
+      {
+        "id": "h_06",
+        "name": "Bram Quarrie",
+        "number": 6,
+        "position": "CM",
+        "baseX": 38,
+        "baseY": 34
+      },
+      {
+        "id": "h_10",
+        "name": "Kai Northcote",
+        "number": 10,
+        "position": "LCM",
+        "baseX": 42,
+        "baseY": 22
+      },
+      {
+        "id": "h_07",
+        "name": "Pavel Abara",
+        "number": 7,
+        "position": "RW",
+        "baseX": 62,
+        "baseY": 58
+      },
+      {
+        "id": "h_09",
+        "name": "Nico Kettering",
+        "number": 9,
+        "position": "ST",
+        "baseX": 66,
+        "baseY": 34
+      },
+      {
+        "id": "h_11",
+        "name": "Leon Sutcliffe",
+        "number": 11,
+        "position": "LW",
+        "baseX": 62,
+        "baseY": 10
+      }
+    ]
+  },
+  "away": {
+    "id": "away",
+    "name": "Eastport Athletic",
+    "shortName": "EPA",
+    "formation": "4-2-3-1",
+    "style": {
+      "directness": 0.6948781158126687,
+      "pressIntensity": 0.4851483298892886,
+      "shootingAppetite": 0.9287806108752491
+    },
+    "players": [
+      {
+        "id": "a_01",
+        "name": "Gael Brenner",
+        "number": 1,
+        "position": "GK",
+        "baseX": 5,
+        "baseY": 34
+      },
+      {
+        "id": "a_02",
+        "name": "Pavel Radley",
+        "number": 2,
+        "position": "RB",
+        "baseX": 25,
+        "baseY": 58
+      },
+      {
+        "id": "a_04",
+        "name": "Eli Okoro",
+        "number": 4,
+        "position": "RCB",
+        "baseX": 22,
+        "baseY": 42
+      },
+      {
+        "id": "a_05",
+        "name": "Ugo Yardley",
+        "number": 5,
+        "position": "LCB",
+        "baseX": 22,
+        "baseY": 26
+      },
+      {
+        "id": "a_03",
+        "name": "Emre Ashdown",
+        "number": 3,
+        "position": "LB",
+        "baseX": 25,
+        "baseY": 10
+      },
+      {
+        "id": "a_06",
+        "name": "Dario Dravic",
+        "number": 6,
+        "position": "RDM",
+        "baseX": 38,
+        "baseY": 42
+      },
+      {
+        "id": "a_08",
+        "name": "Eli Ellery",
+        "number": 8,
+        "position": "LDM",
+        "baseX": 38,
+        "baseY": 26
+      },
+      {
+        "id": "a_07",
+        "name": "Callum Varga",
+        "number": 7,
+        "position": "RAM",
+        "baseX": 58,
+        "baseY": 56
+      },
+      {
+        "id": "a_10",
+        "name": "Bram Belmonte",
+        "number": 10,
+        "position": "CAM",
+        "baseX": 56,
+        "baseY": 34
+      },
+      {
+        "id": "a_11",
+        "name": "Emre Ingleby",
+        "number": 11,
+        "position": "LAM",
+        "baseX": 58,
+        "baseY": 12
+      },
+      {
+        "id": "a_09",
+        "name": "Arlo Calloway",
+        "number": 9,
+        "position": "ST",
+        "baseX": 68,
+        "baseY": 34
+      }
+    ]
+  }
+}

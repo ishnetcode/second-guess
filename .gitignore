@@ -1,6 +1,7 @@
 bin/
 obj/
 .vs/
-.vscode/
+.vscode/*
+!.vscode/mcp.json
 *.user
 .env

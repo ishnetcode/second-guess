@@ -1,4 +1,4 @@
-namespace SecondGuess.Generator;
+namespace SecondGuess.Domain;
 
 public static class RandomExtensions
 {

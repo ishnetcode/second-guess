@@ -120,8 +120,9 @@ probabilities and the source event IDs. Simulations are presented as estimates, 
   workflows/               CI and Copilot coding agent setup
 src/
   SecondGuess.Domain/      Shared types, pitch geometry and football models (xG, pass success, pressure)
-  SecondGuess.Generator/   Synthetic match generator and real-time replayer
-data/                      Generated matches (match.json + events.jsonl per match)
+  SecondGuess.Generator/   Synthetic match generator, real-time replayer and what-if CLI
+  SecondGuess.Simulation/  What-if engine: moment finder, Monte Carlo simulation, counterfactual dataset
+  SecondGuess.McpServer/   MCP server exposing the what-if engine as tools for agents
 ```
 
 ## Getting started
@@ -137,6 +138,12 @@ dotnet run --project src/SecondGuess.Generator -- generate --seed 100 --matches 
 
 # Replay a match as a live feed at 20x speed
 dotnet run --project src/SecondGuess.Generator -- replay --match data/m_42 --speed 20
+
+# Find the shots where another option was better, then simulate the biggest one (or pass --event evt_000123)
+dotnet run --project src/SecondGuess.Generator -- whatif --match data/m_42
+
+# Run the tests
+dotnet test SecondGuess.slnx
 ```
 
 The same seed always produces the same match, so demos are reproducible.
@@ -147,6 +154,8 @@ Matches are simulated possession by possession:
 
 - **Team shapes:** each team plays a formation (4-3-3, 4-2-3-1). Players shift with the ball;
   the defending side holds a compact block and its nearest player presses the ball.
+- **Attacking runs:** in the final third, forwards sometimes run into the box and the nearest
+  defender tracks them, so a better-placed teammate is sometimes available.
 - **Decisions:** the ball carrier shoots, carries or passes. Shot likelihood rises with chance quality;
   pass targets favour forward options and teammates in space.
 - **Outcomes:** pass success depends on distance, defenders in the passing lane and pressure;
@@ -154,14 +163,61 @@ Matches are simulated possession by possession:
 - **Team styles:** directness, pressing intensity and shooting appetite make each team play differently.
 - **Timing:** ball speed, running speed, restarts and stoppage time give realistic event timing.
 
-Generated matches are checked against realistic per-team ranges (printed after each run):
+After each run the generator checks every team total against a plausible range for a single match.
+Averages across many matches stay close to real football:
 
-| Metric | Typical generated value | Realistic range |
+| Metric (per team) | Typical generated average | Plausible single-match range |
 |---|---|---|
-| Passes | ~490 | 350–650 |
-| Pass accuracy | ~78% | 72–90% |
-| Shots | ~10–15 | 5–20 |
-| xG | ~1.0–1.5 | 0.3–2.8 |
+| Passes | ~500 | 300–700 |
+| Pass accuracy | ~78% | 70–92% |
+| Shots | ~10–14 | 3–25 |
+| Shots on target | ~4 (about a third of shots) | 0–12 |
+| xG | ~1.2–1.9 | 0.1–3.5 |
+| Interceptions | ~25 | 5–40 |
+| Ball recoveries | ~50 | 20–80 |
+
+## What-if simulation engine
+
+For any shot, pass or carry, the engine compares the decision that was taken with the realistic
+alternatives: **shoot**, **carry towards goal**, or **pass to each outfield teammate** within 5–50 m.
+
+For each option it runs 2,000 Monte Carlo simulations, adding about 1 m of uncertainty to every
+player's position, and estimates the **chance that the option leads to a goal from the next shot**:
+
+| Option | Value per simulation |
+|---|---|
+| Shoot | xG from the shooter's position, given defenders in the shot cone |
+| Carry | chance of keeping the ball (pressure, defenders in the carry path and near where it ends) × xG after carrying ~6 m towards goal |
+| Pass | pass success probability (distance, defenders in the lane, pressure) × receiver's xG, reduced if the receiver is under pressure |
+
+Each option returns the average, a P10–P90 range, and the **football factors** behind it (pass
+distance, defenders in the lane, the receiver's space, defenders in the shot cone), so agents can
+explain *why* one decision was better. Results are **deterministic** (seeded from the event ID),
+so a fact-checker can re-run and verify any number.
+
+Every simulation is appended to `data/{matchId}/counterfactuals.jsonl` as a labelled
+"actual decision vs best alternative" record, which grows into a new synthetic dataset.
+
+## MCP server
+
+`SecondGuess.McpServer` exposes the engine over the Model Context Protocol (stdio):
+
+| Tool | What it does |
+|---|---|
+| `list_matches` | Lists the generated matches |
+| `rank_decisions` | Simulates every shot and ranks the decisions where a better option existed |
+| `find_moments` | Finds simulatable moments by player name and/or minute; otherwise the biggest chances first |
+| `get_game_state` | Returns all 22 player positions at a moment |
+| `simulate_options` | Simulates the actual decision and alternatives, and saves the counterfactual record |
+
+The repository includes `.vscode/mcp.json`, so in VS Code you can start the **second-guess** server
+and ask GitHub Copilot in agent mode: *"In match m_42, what if the biggest missed chance had been a pass?"*
+
+To explore the tools directly, use the MCP Inspector:
+
+```bash
+npx @modelcontextprotocol/inspector dotnet run --project src/SecondGuess.McpServer -- --data data
+```
 
 ## Data schema
 
@@ -176,7 +232,7 @@ which attacks towards x = 105 (goal centre at 105, 34).
 |---|---|
 | `eventId`, `matchId` | Identifiers |
 | `period`, `matchClock`, `timestampMs` | Half, clock (`mm:ss`) and milliseconds since kick-off |
-| `type` | `period_start`, `period_end`, `possession_change`, `pass`, `carry`, `shot`, `pressure`, `tackle`, `interception` |
+| `type` | `period_start`, `period_end`, `possession_change`, `pass`, `carry`, `shot`, `pressure`, `tackle`, `interception`, `ball_recovery` |
 | `teamId`, `playerId`, `receiverId` | Who performed (and received) the action |
 | `x`, `y`, `endX`, `endY` | Start and end locations |
 | `outcome` | e.g. `complete`, `incomplete`, `goal`, `saved`, `off_target`, `blocked`, `dispossessed`, `won`; for possession changes, the reason (`interception`, `throw_in`, `goal_kick`...) |
@@ -191,6 +247,7 @@ which attacks towards x = 105 (goal centre at 105, 34).
 - [x] Synthetic match generator and replayer
 - [x] GitHub Copilot toolkit (agents, skills, slash commands) and CI
 - [ ] Stream events to Microsoft Fabric Real-Time Intelligence
-- [ ] Simulation engine exposed as an MCP server
+- [x] What-if simulation engine, exposed as an MCP server
+- [x] Unit tests
 - [ ] Multi-agent what-if system (Microsoft Agent Framework)
 - [ ] Fact-checking, multilingual output and web UI

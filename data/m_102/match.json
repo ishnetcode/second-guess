@@ -1,0 +1,209 @@
+{
+  "matchId": "m_102",
+  "seed": 102,
+  "competition": "Synthetic League",
+  "venue": "Northvale Park",
+  "kickOff": "2026-10-24T15:00:00+00:00",
+  "home": {
+    "id": "home",
+    "name": "Northvale Rovers",
+    "shortName": "NVR",
+    "formation": "4-3-3",
+    "style": {
+      "directness": 0.6936773603402846,
+      "pressIntensity": 0.5748413847567715,
+      "shootingAppetite": 0.9871344145038433
+    },
+    "players": [
+      {
+        "id": "h_01",
+        "name": "Pavel Dravic",
+        "number": 1,
+        "position": "GK",
+        "baseX": 5,
+        "baseY": 34
+      },
+      {
+        "id": "h_02",
+        "name": "Zane Whitlock",
+        "number": 2,
+        "position": "RB",
+        "baseX": 25,
+        "baseY": 58
+      },
+      {
+        "id": "h_04",
+        "name": "Nico Brenner",
+        "number": 4,
+        "position": "RCB",
+        "baseX": 22,
+        "baseY": 42
+      },
+      {
+        "id": "h_05",
+        "name": "Hugo Tarrant",
+        "number": 5,
+        "position": "LCB",
+        "baseX": 22,
+        "baseY": 26
+      },
+      {
+        "id": "h_03",
+        "name": "Alden Castell",
+        "number": 3,
+        "position": "LB",
+        "baseX": 25,
+        "baseY": 10
+      },
+      {
+        "id": "h_08",
+        "name": "Callum Quarrie",
+        "number": 8,
+        "position": "RCM",
+        "baseX": 42,
+        "baseY": 46
+      },
+      {
+        "id": "h_06",
+        "name": "Tomas Esposo",
+        "number": 6,
+        "position": "CM",
+        "baseX": 38,
+        "baseY": 34
+      },
+      {
+        "id": "h_10",
+        "name": "Tomas Yardley",
+        "number": 10,
+        "position": "LCM",
+        "baseX": 42,
+        "baseY": 22
+      },
+      {
+        "id": "h_07",
+        "name": "Zane Jessop",
+        "number": 7,
+        "position": "RW",
+        "baseX": 62,
+        "baseY": 58
+      },
+      {
+        "id": "h_09",
+        "name": "Dario Lindqvist",
+        "number": 9,
+        "position": "ST",
+        "baseX": 66,
+        "baseY": 34
+      },
+      {
+        "id": "h_11",
+        "name": "Sami Kettering",
+        "number": 11,
+        "position": "LW",
+        "baseX": 62,
+        "baseY": 10
+      }
+    ]
+  },
+  "away": {
+    "id": "away",
+    "name": "Eastport Athletic",
+    "shortName": "EPA",
+    "formation": "4-2-3-1",
+    "style": {
+      "directness": 0.6861491888050666,
+      "pressIntensity": 0.6721719697892983,
+      "shootingAppetite": 1.0113581209175768
+    },
+    "players": [
+      {
+        "id": "a_01",
+        "name": "Wes Varga",
+        "number": 1,
+        "position": "GK",
+        "baseX": 5,
+        "baseY": 34
+      },
+      {
+        "id": "a_02",
+        "name": "Bram Okoro",
+        "number": 2,
+        "position": "RB",
+        "baseX": 25,
+        "baseY": 58
+      },
+      {
+        "id": "a_04",
+        "name": "Dario Marlow",
+        "number": 4,
+        "position": "RCB",
+        "baseX": 22,
+        "baseY": 42
+      },
+      {
+        "id": "a_05",
+        "name": "Tomas Zeller",
+        "number": 5,
+        "position": "LCB",
+        "baseX": 22,
+        "baseY": 26
+      },
+      {
+        "id": "a_03",
+        "name": "Bastian Underhill",
+        "number": 3,
+        "position": "LB",
+        "baseX": 25,
+        "baseY": 10
+      },
+      {
+        "id": "a_06",
+        "name": "Tomas Holloway",
+        "number": 6,
+        "position": "RDM",
+        "baseX": 38,
+        "baseY": 42
+      },
+      {
+        "id": "a_08",
+        "name": "Quin Radley",
+        "number": 8,
+        "position": "LDM",
+        "baseX": 38,
+        "baseY": 26
+      },
+      {
+        "id": "a_07",
+        "name": "Arlo Belmonte",
+        "number": 7,
+        "position": "RAM",
+        "baseX": 58,
+        "baseY": 56
+      },
+      {
+        "id": "a_10",
+        "name": "Nico Northcote",
+        "number": 10,
+        "position": "CAM",
+        "baseX": 56,
+        "baseY": 34
+      },
+      {
+        "id": "a_11",
+        "name": "Wes Pellham",
+        "number": 11,
+        "position": "LAM",
+        "baseX": 58,
+        "baseY": 12
+      },
+      {
+        "id": "a_09",
+        "name": "Oren Abara",
+        "number": 9,
+        "position": "ST",
+        "baseX": 68,
+        "baseY": 34
+      }
+    ]
+  }
+}

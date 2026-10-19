@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SecondGuess.Domain\SecondGuess.Domain.csproj" />
+    <ProjectReference Include="..\SecondGuess.Simulation\SecondGuess.Simulation.csproj" />
   </ItemGroup>
 
 </Project>

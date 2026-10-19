@@ -38,13 +38,13 @@ public static class MatchFactory
     public static MatchInfo Create(int seed)
     {
         var rng = new Random(seed * 7919 + 17);
-        var usedNames = new HashSet<string>();
+        var usedLastNames = new HashSet<string>();
 
         var home = CreateTeam("home", "Northvale Rovers", "NVR", "4-3-3", Shape433,
-            new TeamStyle(Vary(rng, 0.80), Vary(rng, 0.70), Vary(rng, 1.00)), rng, usedNames);
+            new TeamStyle(Vary(rng, 0.65), Vary(rng, 0.50), Vary(rng, 1.00)), rng, usedLastNames);
 
         var away = CreateTeam("away", "Eastport Athletic", "EPA", "4-2-3-1", Shape4231,
-            new TeamStyle(Vary(rng, 0.65), Vary(rng, 0.50), Vary(rng, 1.00)), rng, usedNames);
+            new TeamStyle(Vary(rng, 0.75), Vary(rng, 0.62), Vary(rng, 1.00)), rng, usedLastNames);
 
         return new MatchInfo(
             MatchId: $"m_{seed}",
@@ -59,12 +59,12 @@ public static class MatchFactory
     private static Team CreateTeam(
         string id, string name, string shortName, string formation,
         (string Position, int Number, double X, double Y)[] shape,
-        TeamStyle style, Random rng, HashSet<string> usedNames)
+        TeamStyle style, Random rng, HashSet<string> usedLastNames)
     {
         var players = shape
             .Select(s => new Player(
                 Id: $"{id[0]}_{s.Number:00}",
-                Name: UniqueName(rng, usedNames),
+                Name: UniqueName(rng, usedLastNames),
                 Number: s.Number,
                 Position: s.Position,
                 BaseX: s.X,
@@ -74,12 +74,14 @@ public static class MatchFactory
         return new Team(id, name, shortName, formation, style, players);
     }
 
-    private static string UniqueName(Random rng, HashSet<string> used)
+    /// <summary>Picks a first and last name; every player in the match gets a different surname.</summary>
+    private static string UniqueName(Random rng, HashSet<string> usedLastNames)
     {
         while (true)
         {
-            string name = $"{FirstNames[rng.Next(FirstNames.Length)]} {LastNames[rng.Next(LastNames.Length)]}";
-            if (used.Add(name)) return name;
+            string lastName = LastNames[rng.Next(LastNames.Length)];
+            if (usedLastNames.Add(lastName))
+                return $"{FirstNames[rng.Next(FirstNames.Length)]} {lastName}";
         }
     }
 

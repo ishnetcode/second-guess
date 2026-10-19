@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "second-guess": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/SecondGuess.McpServer",
+        "--",
+        "--data",
+        "${workspaceFolder}/data"
+      ]
+    }
+  }
+}

@@ -2,9 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/SecondGuess.Domain/SecondGuess.Domain.csproj" />
     <Project Path="src/SecondGuess.Generator/SecondGuess.Generator.csproj" />
+    <Project Path="src/SecondGuess.McpServer/SecondGuess.McpServer.csproj" />
+    <Project Path="src/SecondGuess.Simulation/SecondGuess.Simulation.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SecondGuess.Domain.Tests/SecondGuess.Domain.Tests.csproj" />
     <Project Path="tests/SecondGuess.Generator.Tests/SecondGuess.Generator.Tests.csproj" />
+    <Project Path="tests/SecondGuess.McpServer.Tests/SecondGuess.McpServer.Tests.csproj" />
+    <Project Path="tests/SecondGuess.Simulation.Tests/SecondGuess.Simulation.Tests.csproj" />
   </Folder>
 </Solution>

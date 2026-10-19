@@ -15,7 +15,7 @@ public sealed class MatchSimulator
     // ~450-550 passes, ~75-80% pass accuracy, ~7-14 shots, ~0.6-1.6 xG.
     private const double ShotRangeMetres = 32;
     private const double ShotBaseProbability = 0.025;
-    private const double ShotXgFactor = 1.6;
+    private const double ShotXgFactor = 1.2;
     private const double MaxShotProbability = 0.85;
     private const double CarryBaseProbability = 0.10;
     private const double CarryOpenSpaceBonus = 0.25;
@@ -25,6 +25,14 @@ public sealed class MatchSimulator
     private const double MaxPassMetres = 50;
     private const double PressureEventThreshold = 0.6;
     private const double PositionJitterMetres = 2;
+    private const double SaveShareOfUnblocked = 0.35;  // keeps roughly a third of shots on target
+    private const double OutOfPlayShare = 0.3;         // failed passes that go out for a throw-in
+    private const double CleanInterceptionShare = 0.35; // of the rest: clean interceptions vs loose-ball recoveries
+    private const double FinalThirdX = 70;           // runs into the box start once the ball is past this line
+    private const double RunProbability = 0.35;      // chance each forward makes a run into the box
+    private const double RunCentralPull = 0.6;       // how strongly runners move towards the middle
+
+    private static readonly HashSet<string> ForwardPositions = ["RW", "ST", "LW", "RAM", "LAM"];
 
     private readonly MatchInfo _info;
     private readonly Random _rng;
@@ -157,6 +165,26 @@ public sealed class MatchSimulator
             defence[i] = Pitch.Clamp(flipped.X, flipped.Y);
         }
 
+        // In the final third, forwards make runs into the box and the nearest defender tracks them.
+        if (_ball.X > FinalThirdX)
+        {
+            for (int i = 0; i < 11; i++)
+            {
+                if (i == _carrier || !ForwardPositions.Contains(attackers.Players[i].Position)) continue;
+                if (_rng.NextDouble() > RunProbability) continue;
+
+                double runX = Math.Max(attack[i].X, Math.Clamp(_rng.Uniform(_ball.X - 4, 99), FinalThirdX, 100));
+                double runY = Pitch.CentreY + (attack[i].Y - Pitch.CentreY) * RunCentralPull + _rng.NextGaussian(0, 4);
+                attack[i] = Pitch.Clamp(runX, runY);
+
+                int marker = NearestOutfieldIndex(defence, attack[i]);
+                double tightness = 0.6 + 0.35 * _rng.NextDouble();
+                defence[marker] = new Point(
+                    defence[marker].X + (attack[i].X - defence[marker].X) * tightness,
+                    defence[marker].Y + (attack[i].Y - defence[marker].Y) * tightness);
+            }
+        }
+
         // Nearest outfield defender steps in to press; harder pressing teams get tighter.
         int presser = NearestOutfieldIndex(defence, _ball);
         double gap = 1.0 + (1 - defenders.Style.PressIntensity) * 4 + Math.Abs(_rng.NextGaussian(0, 1.5));
@@ -196,7 +224,7 @@ public sealed class MatchSimulator
         string outcome =
             isGoal ? "goal" :
             defendersInCone >= 2 && _rng.NextDouble() < 0.4 ? "blocked" :
-            _rng.NextDouble() < 0.55 ? "saved" : "off_target";
+            _rng.NextDouble() < SaveShareOfUnblocked ? "saved" : "off_target";
 
         double endY = outcome switch
         {
@@ -356,7 +384,7 @@ public sealed class MatchSimulator
         var midpoint = new Point((_ball.X + target.X) / 2, (_ball.Y + target.Y) / 2);
         int winner = NearestOutfieldIndex(defence, midpoint);
 
-        if (_rng.NextDouble() < 0.3)
+        if (_rng.NextDouble() < OutOfPlayShare)
         {
             Advance(_rng.Uniform(8, 20));
             double touchlineY = target.Y < Pitch.CentreY ? 0.5 : Pitch.Width - 0.5;
@@ -367,18 +395,21 @@ public sealed class MatchSimulator
             return true;
         }
 
-        Point interceptPoint = Pitch.Flip(defence[winner]);
-        _events.Add(NewEvent(EventTypes.Interception, defendingTeam, _teams[defendingTeam].Players[winner]) with
+        // Either a clean interception of the pass, or the loose ball is recovered after it.
+        bool clean = _rng.NextDouble() < CleanInterceptionShare;
+        string type = clean ? EventTypes.Interception : EventTypes.BallRecovery;
+        Point winPoint = Pitch.Flip(defence[winner]);
+        _events.Add(NewEvent(type, defendingTeam, _teams[defendingTeam].Players[winner]) with
         {
-            X = Round(interceptPoint.X),
-            Y = Round(interceptPoint.Y),
+            X = Round(winPoint.X),
+            Y = Round(winPoint.Y),
             Outcome = "won"
         });
 
         _attacking = defendingTeam;
-        _ball = interceptPoint;
+        _ball = winPoint;
         _carrier = winner;
-        NewPossession("interception");
+        NewPossession(type);
         return true;
     }
 

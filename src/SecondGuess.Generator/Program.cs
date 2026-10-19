@@ -5,6 +5,7 @@ using SecondGuess.Generator;
 // Usage:
 //   dotnet run --project src/SecondGuess.Generator -- generate [--seed 42] [--matches 1] [--out data]
 //   dotnet run --project src/SecondGuess.Generator -- replay --match data/m_42 [--speed 20]
+//   dotnet run --project src/SecondGuess.Generator -- whatif --match data/m_42 [--event evt_000123]
 
 string command = args.Length > 0 ? args[0] : "generate";
 var options = ParseOptions(args.Skip(1).ToArray());
@@ -30,8 +31,14 @@ try
                 cancellationToken: cts.Token);
             break;
 
+        case "whatif":
+            WhatIfCommand.Run(
+                matchFolder: options.GetValueOrDefault("match", "data/m_42"),
+                eventId: options.GetValueOrDefault("event"));
+            break;
+
         default:
-            Console.Error.WriteLine($"Unknown command '{command}'. Use 'generate' or 'replay'.");
+            Console.Error.WriteLine($"Unknown command '{command}'. Use 'generate', 'replay' or 'whatif'.");
             return 1;
     }
 }

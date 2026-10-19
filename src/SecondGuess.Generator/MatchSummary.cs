@@ -13,20 +13,21 @@ public static class MatchSummary
 
         Console.WriteLine();
         Console.WriteLine($"  {info.Home.Name} {last.HomeScore} - {last.AwayScore} {info.Away.Name}   (seed {info.Seed}, {events.Count} events)");
-        Console.WriteLine($"  {"",-22}{info.Home.ShortName,10}{info.Away.ShortName,10}   realistic range");
+        Console.WriteLine($"  {"",-22}{info.Home.ShortName,10}{info.Away.ShortName,10}   plausible range for one match");
 
-        Row("Passes", t => Count(events, t, EventTypes.Pass), 350, 650);
+        Row("Passes", t => Count(events, t, EventTypes.Pass), 300, 700);
         Row("Pass accuracy %", t => Percent(
                 Count(events, t, EventTypes.Pass, "complete"),
-                Count(events, t, EventTypes.Pass)), 72, 90);
-        Row("Shots", t => Count(events, t, EventTypes.Shot), 5, 20);
+                Count(events, t, EventTypes.Pass)), 70, 92);
+        Row("Shots", t => Count(events, t, EventTypes.Shot), 3, 25);
         Row("Shots on target", t =>
-                Count(events, t, EventTypes.Shot, "goal") + Count(events, t, EventTypes.Shot, "saved"), 1, 9);
+                Count(events, t, EventTypes.Shot, "goal") + Count(events, t, EventTypes.Shot, "saved"), 0, 12);
         Row("xG", t => Math.Round(events
                 .Where(e => e.TeamId == t && e.Type == EventTypes.Shot)
-                .Sum(e => e.Xg ?? 0), 2), 0.3, 2.8);
-        Row("Tackles won", t => Count(events, t, EventTypes.Tackle), 10, 45);
-        Row("Interceptions", t => Count(events, t, EventTypes.Interception), 10, 60);
+                .Sum(e => e.Xg ?? 0), 2), 0.1, 3.5);
+        Row("Tackles won", t => Count(events, t, EventTypes.Tackle), 10, 55);
+        Row("Interceptions", t => Count(events, t, EventTypes.Interception), 5, 40);
+        Row("Ball recoveries", t => Count(events, t, EventTypes.BallRecovery), 20, 80);
         Row("Pressures", t => Count(events, t, EventTypes.Pressure), null, null);
         Console.WriteLine();
     }

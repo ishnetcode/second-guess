@@ -7,16 +7,26 @@ explains the difference in plain language and fact-checks every number.
 ## Tech stack
 - .NET 10 / C# 13, solution file `SecondGuess.slnx`
 - `src/SecondGuess.Domain`: shared types, pitch geometry, football models (xG, pass success, pressure)
-- `src/SecondGuess.Generator`: synthetic match generator and real-time replayer
-- Planned: Microsoft Agent Framework + Microsoft.Extensions.AI agents, an MCP server for the simulation
-  engine, Microsoft Foundry / Azure OpenAI, Microsoft Fabric Real-Time Intelligence, Azure Container Apps
+- `src/SecondGuess.Generator`: synthetic match generator, real-time replayer and `whatif` CLI
+- `src/SecondGuess.Simulation`: what-if engine (moment finder, Monte Carlo simulation, counterfactual store)
+- `src/SecondGuess.McpServer`: MCP server (ModelContextProtocol SDK, stdio) exposing the engine as tools
+- `tests/SecondGuess.Tests`: xUnit tests; run `dotnet test SecondGuess.slnx`
+- Planned: Microsoft Agent Framework + Microsoft.Extensions.AI agents, Microsoft Foundry / Azure OpenAI,
+  Microsoft Fabric Real-Time Intelligence, Azure Container Apps
 
 ## Build and run
 ```bash
 dotnet build SecondGuess.slnx
 dotnet run --project src/SecondGuess.Generator -- generate --seed 42
 dotnet run --project src/SecondGuess.Generator -- replay --match data/m_42 --speed 20
+dotnet run --project src/SecondGuess.Generator -- whatif --match data/m_42
+dotnet test SecondGuess.slnx
 ```
+
+## MCP tools
+The `second-guess` MCP server (configured in `.vscode/mcp.json`) provides `list_matches`, `rank_decisions`, `find_moments`,
+`get_game_state` and `simulate_options`. When answering what-if questions, call these tools and quote only
+the numbers they return.
 
 ## Rules that always apply
 - **Synthetic data only.** Never add real match data, real club names, real player names, logos or
