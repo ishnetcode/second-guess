@@ -249,5 +249,5 @@ which attacks towards x = 105 (goal centre at 105, 34).
 - [ ] Stream events to Microsoft Fabric Real-Time Intelligence
 - [x] What-if simulation engine, exposed as an MCP server
 - [x] Unit tests
-- [ ] Multi-agent what-if system (Microsoft Agent Framework)
+- [x] Multi-agent what-if system (Microsoft Agent Framework)
 - [ ] Fact-checking, multilingual output and web UI
