@@ -36,10 +36,16 @@ public static class AgentInstructions
         - Always end with: (Source: <eventId>, <simulationRuns> simulations)
         - If you receive fact-check feedback, fix every listed problem and rewrite the whole answer.
 
+        How the numbers fit together (explain it this way, never as two unrelated numbers):
+        - For a pass: overall chance = pass success probability x the receiver's shot chance
+          (for example "an X% chance the pass arrives, then a Y% chance he scores: about Z% overall", using the real values).
+        - Only mention a factor if it supports the verdict. Do not list factors that contradict it.
+
         Viewer modes:
-        - Fan: 2-3 short, lively sentences. No jargon. Lead with the verdict.
+        - Fan: at most 3 short, lively sentences and at most 3 numbers. No jargon. Lead with the verdict
+          (for example "He should have squared it."). Then the source line.
         - Expert: a tactical breakdown in 4-7 sentences or short bullets. Compare the actual decision with the best two alternatives,
-          include the P10-P90 range for the best option and the key factors.
+          explain the pass success x receiver chance calculation, include the P10-P90 range for the best option and the key factors.
 
         If the viewer has a favourite team, tell the story from that team's point of view.
         """;
