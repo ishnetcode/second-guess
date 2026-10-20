@@ -10,9 +10,13 @@ explains the difference in plain language and fact-checks every number.
 - `src/SecondGuess.Generator`: synthetic match generator, real-time replayer and `whatif` CLI
 - `src/SecondGuess.Simulation`: what-if engine (moment finder, Monte Carlo simulation, counterfactual store)
 - `src/SecondGuess.McpServer`: MCP server (ModelContextProtocol SDK, stdio) exposing the engine as tools
+- `src/SecondGuess.Agents`: multi-agent system (Microsoft Agent Framework): Moment Finder, Simulator, Explainer,
+  Fact-Checker (`AnswerFactChecker`, deterministic) and Localiser, coordinated by `WhatIfOrchestrator`
+- `src/SecondGuess.Agents.Cli`: command-line client for the agents
 - `tests/SecondGuess.Tests`: xUnit tests; run `dotnet test SecondGuess.slnx`
-- Planned: Microsoft Agent Framework + Microsoft.Extensions.AI agents, Microsoft Foundry / Azure OpenAI,
-  Microsoft Fabric Real-Time Intelligence, Azure Container Apps
+- Models: Azure OpenAI in Microsoft Foundry, configured with AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT
+  (sign-in with `az login`, never commit keys)
+- Planned: Blazor web UI, live event streaming (Fabric or Event Hubs), Azure Container Apps
 
 ## Build and run
 ```bash

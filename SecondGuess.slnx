@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SecondGuess.Agents/SecondGuess.Agents.csproj" />
+    <Project Path="src/SecondGuess.Agents.Cli/SecondGuess.Agents.Cli.csproj" />
     <Project Path="src/SecondGuess.Domain/SecondGuess.Domain.csproj" />
     <Project Path="src/SecondGuess.Generator/SecondGuess.Generator.csproj" />
     <Project Path="src/SecondGuess.McpServer/SecondGuess.McpServer.csproj" />

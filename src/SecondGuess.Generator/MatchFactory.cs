@@ -41,7 +41,7 @@ public static class MatchFactory
         var usedLastNames = new HashSet<string>();
 
         var home = CreateTeam("home", "Northvale Rovers", "NVR", "4-3-3", Shape433,
-            new TeamStyle(Vary(rng, 0.65), Vary(rng, 0.50), Vary(rng, 1.00)), rng, usedLastNames);
+            new TeamStyle(Vary(rng, 0.80), Vary(rng, 0.70), Vary(rng, 1.00)), rng, usedLastNames);
 
         var away = CreateTeam("away", "Eastport Athletic", "EPA", "4-2-3-1", Shape4231,
             new TeamStyle(Vary(rng, 0.75), Vary(rng, 0.62), Vary(rng, 1.00)), rng, usedLastNames);

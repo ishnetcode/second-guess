@@ -123,6 +123,11 @@ src/
   SecondGuess.Generator/   Synthetic match generator, real-time replayer and what-if CLI
   SecondGuess.Simulation/  What-if engine: moment finder, Monte Carlo simulation, counterfactual dataset
   SecondGuess.McpServer/   MCP server exposing the what-if engine as tools for agents
+  SecondGuess.Agents/      Multi-agent system (Microsoft Agent Framework + Microsoft Foundry)
+  SecondGuess.Agents.Cli/  Ask the agents a what-if question from the command line
+tests/
+  SecondGuess.Tests/       Unit tests for the models, generator and simulation
+data/                      Generated matches (match.json + events.jsonl per match)
 ```
 
 ## Getting started
@@ -219,6 +224,49 @@ To explore the tools directly, use the MCP Inspector:
 npx @modelcontextprotocol/inspector dotnet run --project src/SecondGuess.McpServer -- --data data
 ```
 
+## Multi-agent system
+
+`SecondGuess.Agents` answers a viewer's question with five specialist agents that share one session
+and hand work to each other:
+
+```
+Viewer question ──► Moment Finder ──► Simulator ──► Explainer ◄──► Fact-Checker ──► Localiser ──► Answer
+                    (LLM + MCP tools)  (MCP, exact)   (LLM)        (deterministic)    (LLM)
+```
+
+| Agent | Built with | Role |
+|---|---|---|
+| **Moment Finder** | Agent Framework agent + MCP tools (`rank_decisions`, `find_moments`, …) | Turns "which shot should have been a pass?" into a specific match and event ID |
+| **Simulator** | Direct MCP tool call (`simulate_options`) | Runs the deterministic what-if engine; if the moment can't be simulated, sends the error back to the Moment Finder |
+| **Explainer** | Agent Framework agent | Writes the answer for **Fan** or **Expert** mode, from the viewer's favourite team's point of view |
+| **Fact-Checker** | Deterministic code (`AnswerFactChecker`) | Checks every percentage, distance and number against the simulation and requires the source event ID; failures go back to the Explainer (up to 3 attempts) |
+| **Localiser** | Agent Framework agent | Translates the checked answer; the Fact-Checker then confirms every number survived translation |
+
+**Why a fact-checker in code?** Because the simulation is deterministic, every number in an answer can be
+verified exactly. A language model can't "talk its way" past the check, which makes answers trustworthy
+enough for broadcast.
+
+Every hand-off is recorded in a trace (agent, action, result, duration), printed by the CLI.
+
+### Setup
+
+1. Deploy a model (for example `gpt-4.1-mini`) in a Microsoft Foundry project.
+2. Sign in with `az login` and give yourself the **Cognitive Services OpenAI User** (or **Foundry User**) role on the resource.
+3. Set the endpoint and deployment (PowerShell):
+   ```powershell
+   $env:AZURE_OPENAI_ENDPOINT = "https://<your-resource>.openai.azure.com/"
+   $env:AZURE_OPENAI_DEPLOYMENT = "gpt-4.1-mini"
+   ```
+   No API key is needed: the agents use your Azure sign-in (`DefaultAzureCredential`).
+
+### Ask a question
+
+```bash
+dotnet build SecondGuess.slnx
+dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should have been a pass?"
+dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should have been a pass?" --mode expert --lang Spanish --team "Eastport Athletic"
+```
+
 ## Data schema
 
 **Coordinates:** metres on a 105 x 68 pitch, always from the perspective of the event's team,
@@ -249,5 +297,7 @@ which attacks towards x = 105 (goal centre at 105, 34).
 - [ ] Stream events to Microsoft Fabric Real-Time Intelligence
 - [x] What-if simulation engine, exposed as an MCP server
 - [x] Unit tests
-- [x] Multi-agent what-if system (Microsoft Agent Framework)
-- [ ] Fact-checking, multilingual output and web UI
+- [x] Multi-agent what-if system (Microsoft Agent Framework, Microsoft Foundry, MCP)
+- [x] Deterministic fact-checking and multilingual answers
+- [ ] Web UI with pitch view, live overlays and personalisation
+- [ ] Deployment to Azure Container Apps
