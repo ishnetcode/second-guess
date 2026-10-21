@@ -13,10 +13,12 @@ explains the difference in plain language and fact-checks every number.
 - `src/SecondGuess.Agents`: multi-agent system (Microsoft Agent Framework): Moment Finder, Simulator, Explainer,
   Fact-Checker (`AnswerFactChecker`, deterministic) and Localiser, coordinated by `WhatIfOrchestrator`
 - `src/SecondGuess.Agents.Cli`: command-line client for the agents
+- `src/SecondGuess.Web`: Blazor Server studio app (`Components/Pages/Home.razor`, `Components/Studio/*`, `wwwroot/app.css`).
+  Design: floodlit night-match telestrator; marker yellow (`--marker`) is reserved for the best alternative.
 - `tests/SecondGuess.Tests`: xUnit tests; run `dotnet test SecondGuess.slnx`
 - Models: Azure OpenAI in Microsoft Foundry, configured with AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT
   (sign-in with `az login`, never commit keys)
-- Planned: Blazor web UI, live event streaming (Fabric or Event Hubs), Azure Container Apps
+- Planned: live event streaming (Fabric or Event Hubs), overlay cards, Azure Container Apps
 
 ## Build and run
 ```bash

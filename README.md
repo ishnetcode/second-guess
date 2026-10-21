@@ -125,6 +125,7 @@ src/
   SecondGuess.McpServer/   MCP server exposing the what-if engine as tools for agents
   SecondGuess.Agents/      Multi-agent system (Microsoft Agent Framework + Microsoft Foundry)
   SecondGuess.Agents.Cli/  Ask the agents a what-if question from the command line
+  SecondGuess.Web/         Blazor studio app: telestrator pitch, options, question box, agent hand-offs
 tests/
   SecondGuess.Tests/       Unit tests for the models, generator and simulation
 data/                      Generated matches (match.json + events.jsonl per match)
@@ -267,6 +268,26 @@ dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should h
 dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should have been a pass?" --mode expert --lang Spanish --team "Eastport Athletic"
 ```
 
+## Studio web app
+
+`SecondGuess.Web` is a Blazor Server app styled like a broadcast telestrator:
+
+- **The frozen moment** on the attacking half of the pitch, with all 22 players in team colours.
+- **The decision taken** as a dashed blue line, and **the best alternative drawn in marker yellow** when the agents answer.
+- **Every option the engine simulated**, as bars with P10–P90 ranges.
+- **Ask the agents** in plain language, in **Fan** or **Expert** mode, in eight languages, from your team's point of view.
+- **The fact-check result** and **every agent hand-off**, so viewers can see how the answer was produced.
+- **Decisions worth a second look:** the shots in the match where another option was better, one click to load.
+
+Without Azure settings the app still works: you can explore every moment and its simulation; only the
+question box needs the agents.
+
+```powershell
+$env:AZURE_OPENAI_ENDPOINT = "https://<your-resource>.openai.azure.com/"
+$env:AZURE_OPENAI_DEPLOYMENT = "gpt-4.1-mini"
+dotnet run --project src/SecondGuess.Web
+```
+
 ## Data schema
 
 **Coordinates:** metres on a 105 x 68 pitch, always from the perspective of the event's team,
@@ -299,5 +320,6 @@ which attacks towards x = 105 (goal centre at 105, 34).
 - [x] Unit tests
 - [x] Multi-agent what-if system (Microsoft Agent Framework, Microsoft Foundry, MCP)
 - [x] Deterministic fact-checking and multilingual answers
-- [ ] Web UI with pitch view, live overlays and personalisation
+- [x] Studio web app: telestrator pitch, Fan/Expert modes, languages, favourite team, agent trace
+- [ ] Live match feed with real-time stats and broadcast overlay cards
 - [ ] Deployment to Azure Container Apps
