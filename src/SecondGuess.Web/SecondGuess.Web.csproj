@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SecondGuess.Agents\SecondGuess.Agents.csproj" />
+    <ProjectReference Include="..\SecondGuess.McpServer\SecondGuess.McpServer.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>a50b38d2-df0b-4484-b879-6be17f472722</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

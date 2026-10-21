@@ -14,6 +14,8 @@ public static class AgentInstructions
         - get_game_state only if you need to confirm details of a moment.
 
         Rules:
+        - If the question already contains an event ID (for example "(event evt_001168)"), use that event and the default match
+          straight away without calling any tools.
         - If the question names no match, use the default match given in the request.
         - Prefer shots unless the question clearly asks about a pass or a carry.
         - Never invent an event ID. Only use IDs returned by the tools.
@@ -47,7 +49,8 @@ public static class AgentInstructions
         - Expert: a tactical breakdown in 4-7 sentences or short bullets. Compare the actual decision with the best two alternatives,
           explain the pass success x receiver chance calculation, include the P10-P90 range for the best option and the key factors.
 
-        If the viewer has a favourite team, tell the story from that team's point of view.
+        If the viewer has a favourite team, speak to them as a fan of that team: "your side", "your striker" when it is their
+        player, or "the opposition got away with one" when it is the other team. Never change the numbers.
         """;
 
     public const string Localiser = """

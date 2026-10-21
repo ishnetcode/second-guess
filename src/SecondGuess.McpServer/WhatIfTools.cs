@@ -13,6 +13,9 @@ namespace SecondGuess.McpServer;
 [McpServerToolType]
 public static class WhatIfTools
 {
+    // Ranking simulates every shot in a match, so results are cached: matches never change once generated.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> RankingCache = new();
+
     [McpServerTool(Name = "list_matches")]
     [Description("Lists the synthetic matches available, with teams and final score.")]
     public static string ListMatches(MatchRepository repository) =>
@@ -39,7 +42,17 @@ public static class WhatIfTools
         [Description("Match ID, e.g. m_42")] string matchId,
         [Description("Event type: shot, pass or carry. Defaults to shot.")] string eventType = "shot",
         [Description("Number of moments to return (1-20).")] int limit = 5) =>
-        Run(() => engine.RankDecisions(repository.Get(matchId), eventType, limit));
+        CachedRanking(repository, engine, matchId, eventType, limit);
+
+    private static string CachedRanking(MatchRepository repository, WhatIfEngine engine, string matchId, string eventType, int limit)
+    {
+        string key = $"{matchId}|{eventType}|{limit}";
+        if (RankingCache.TryGetValue(key, out string? cached)) return cached;
+
+        string json = Run(() => engine.RankDecisions(repository.Get(matchId), eventType, limit));
+        if (!json.Contains("\"error\"")) RankingCache[key] = json;   // never cache failures
+        return json;
+    }
 
     [McpServerTool(Name = "get_game_state")]
     [Description("Returns the positions of all 22 players and the ball at a moment, sorted by distance to the ball. " +

@@ -1,0 +1,296 @@
+@page "/"
+@rendermode InteractiveServer
+@using System.Globalization
+@using SecondGuess.Agents
+@using SecondGuess.Simulation
+@using SecondGuess.Web.Components.Studio
+@using SecondGuess.Web.Services
+@inject SecondGuessService Service
+
+<PageTitle>Second Guess</PageTitle>
+
+<div class="studio">
+    <header class="masthead">
+        <div class="brand">
+            <h1>Second Guess</h1>
+            <p>Pick a moment, or ask your own what-if.</p>
+        </div>
+
+        <div class="controls">
+            <label>
+                <span>Match</span>
+                <select @bind="matchId" @bind:after="LoadMatchAsync" disabled="@busy">
+                    @foreach (var m in matches)
+                    {
+                        <option value="@m.MatchId">@m.Home @m.FinalScore @m.Away (@m.MatchId)</option>
+                    }
+                </select>
+            </label>
+
+            <fieldset class="mode" disabled="@busy">
+                <legend>View</legend>
+                <button type="button" aria-pressed="@(mode == ViewerMode.Fan)" @onclick="() => mode = ViewerMode.Fan">Fan</button>
+                <button type="button" aria-pressed="@(mode == ViewerMode.Expert)" @onclick="() => mode = ViewerMode.Expert">Expert</button>
+            </fieldset>
+
+            <label>
+                <span>Language</span>
+                <select @bind="language" disabled="@busy">
+                    @foreach (var lang in Languages)
+                    {
+                        <option value="@lang">@lang</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Your team</span>
+                <select @bind="favouriteTeam" disabled="@busy">
+                    <option value="">No preference</option>
+                    @foreach (var team in Teams)
+                    {
+                        <option value="@team">@team</option>
+                    }
+                </select>
+            </label>
+        </div>
+    </header>
+
+    @if (matches.Count == 0)
+    {
+        <section class="empty">
+            <h2>No matches yet</h2>
+            <p>Generate some synthetic matches, then reload this page:</p>
+            <pre>dotnet run --project src/SecondGuess.Generator -- generate --seed 100 --matches 5</pre>
+        </section>
+    }
+    else
+    {
+        <main class="board">
+            <section class="stage">
+                @if (view is not null)
+                {
+                    <div class="moment-line">
+                        <span class="clock">@view.Result.MatchClock</span>
+                        <span class="who">@view.Result.PlayerName, @view.Result.TeamName</span>
+                        <span class="what">@Outcome(view.Result)</span>
+                    </div>
+                }
+
+                <Pitch State="view?.State" Result="view?.Result" ShowAlternative="@revealed" HomeTeamName="@homeTeam" AwayTeamName="@awayTeam" />
+
+                @if (view is not null)
+                {
+                    <OptionsChart Result="view.Result" ShowBest="@revealed" />
+                }
+            </section>
+
+            <aside class="desk">
+                <form class="ask" @onsubmit="AskAsync" @onsubmit:preventDefault>
+                    <label for="question">Your question</label>
+                    <textarea id="question" rows="3" @bind="question" @bind:event="oninput" disabled="@busy"
+                              placeholder="Which shot should have been a pass?"></textarea>
+                    <button type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(question) || Service.AgentsUnavailableReason is not null)">
+                        @(busy ? "Agents are working…" : "Ask the agents")
+                    </button>
+                    @if (Service.AgentsUnavailableReason is { } reason)
+                    {
+                        <p class="hint">@reason You can still pick moments and see the simulation.</p>
+                    }
+                </form>
+
+                @if (busy)
+                {
+                    <ol class="progress" aria-live="polite">
+                        <li>Moment Finder is choosing the moment</li>
+                        <li>Simulator is running the options</li>
+                        <li>Explainer is writing, Fact-Checker is checking every number</li>
+                        @if (!IsEnglish)
+                        {
+                            <li>Localiser is translating to @language</li>
+                        }
+                    </ol>
+                }
+
+                @if (error is not null)
+                {
+                    <p class="error" role="alert">@error</p>
+                }
+
+                @if (answer is not null && !busy)
+                {
+                    <article class="answer">
+                        <p dir="auto" lang="@LangCode(answer.Language)">@answer.Answer</p>
+                        <footer class="@(answer.FactCheck.Passed ? "checked" : "unchecked")">
+                            @if (answer.FactCheck.Passed)
+                            {
+                                <span>Fact-checked: @answer.FactCheck.NumbersChecked numbers match the simulation</span>
+                            }
+                            else
+                            {
+                                <span>Some numbers could not be verified: @string.Join(" ", answer.FactCheck.Issues)</span>
+                            }
+                            @if (answer.ExplainerAttempts > 1)
+                            {
+                                <span>Rewritten @(answer.ExplainerAttempts - 1) time(s) after the fact-check</span>
+                            }
+                        </footer>
+                    </article>
+
+                    <AgentTrace Steps="answer.Trace" />
+                }
+            </aside>
+        </main>
+
+        <section class="decisions" aria-label="Key decisions in this match">
+            <h2>Decisions worth a second look</h2>
+            @if (decisions is null)
+            {
+                <p class="loading">Simulating every shot in the match…</p>
+            }
+            else
+            {
+                <ul>
+                    @foreach (var d in decisions)
+                    {
+                        <li>
+                            <button type="button" aria-pressed="@(d.EventId == view?.Result.EventId)" disabled="@busy"
+                                    @onclick="() => SelectDecisionAsync(d)">
+                                <span class="clock">@d.MatchClock</span>
+                                <span class="who">@d.PlayerName</span>
+                                <span class="numbers">Shot @Pct(d.ActualValue), best option @Pct(d.BestAlternativeValue)</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly string[] Languages = ["English", "Spanish", "French", "Portuguese", "German", "Arabic", "Hindi", "Japanese"];
+
+    private IReadOnlyList<MatchListItem> matches = [];
+    private IReadOnlyList<DecisionRanking>? decisions;
+    private string[] Teams => matches.FirstOrDefault(m => m.MatchId == matchId) is { } m ? new[] { m.Home, m.Away } : Array.Empty<string>();
+    private string homeTeam = "";
+    private string awayTeam = "";
+
+    private string matchId = "";
+    private ViewerMode mode = ViewerMode.Fan;
+    private string language = "English";
+    private string favouriteTeam = "";
+    private string question = "Which shot should have been a pass?";
+
+    private MomentView? view;
+    private DecisionRanking? selected;
+    private WhatIfAnswer? answer;
+    private bool revealed;
+    private bool busy;
+    private string? error;
+
+    private bool IsEnglish => language == "English";
+
+    protected override async Task OnInitializedAsync()
+    {
+        matches = Service.ListMatches();
+        if (matches.Count == 0) return;
+
+        matchId = matches.Any(m => m.MatchId == "m_100") ? "m_100" : matches[0].MatchId;
+        await LoadMatchAsync();
+    }
+
+    private async Task LoadMatchAsync()
+    {
+        var current = matches.First(m => m.MatchId == matchId);
+        homeTeam = current.Home;
+        awayTeam = current.Away;
+        decisions = null;
+        view = null;
+        answer = null;
+        selected = null;
+        revealed = false;
+        error = null;
+        StateHasChanged();
+
+        decisions = await Service.GetKeyDecisionsAsync(matchId);
+        if (decisions.Count > 0)
+            await SelectDecisionAsync(decisions[0]);
+    }
+
+    private async Task SelectDecisionAsync(DecisionRanking decision)
+    {
+        selected = decision;
+        answer = null;
+        // Without the agents configured, show the engine's best alternative straight away.
+        revealed = Service.AgentsUnavailableReason is not null;
+        error = null;
+        question = $"At {decision.MatchClock}, {decision.PlayerName} shot. What would a better decision have been?";
+        view = await Service.PreviewAsync(matchId, decision.EventId);
+    }
+
+    private async Task AskAsync()
+    {
+        busy = true;
+        error = null;
+        answer = null;
+        revealed = false;
+
+        try
+        {
+            // If a moment is selected and the question is about it, tell the Moment Finder which event to use.
+            string prompt = selected is not null && question.Contains(selected.MatchClock)
+                ? $"{question} (event {selected.EventId})"
+                : question;
+
+            var request = new WhatIfRequest(
+                Question: prompt,
+                MatchId: matchId,
+                Mode: mode,
+                Language: language,
+                FavouriteTeam: string.IsNullOrEmpty(favouriteTeam) ? null : favouriteTeam);
+
+            answer = await Service.AskAsync(request);
+
+            // Show the moment the agents actually chose, then draw the alternative.
+            if (view is null || view.Result.EventId != answer.Moment.EventId)
+            {
+                matchId = answer.Moment.MatchId;
+                view = await Service.PreviewAsync(answer.Moment.MatchId, answer.Moment.EventId);
+                selected = decisions?.FirstOrDefault(d => d.EventId == answer.Moment.EventId);
+            }
+            revealed = true;
+        }
+        catch (Exception ex)
+        {
+            error = $"The agents could not answer: {ex.Message}";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private static string Outcome(WhatIfResult r) => r.ActualAction switch
+    {
+        "shot" => r.ActualOutcome switch
+        {
+            "goal" => "shot and scored",
+            "saved" => "shot, saved",
+            "off_target" => "shot, off target",
+            "blocked" => "shot, blocked",
+            _ => "shot"
+        },
+        "pass" => "passed",
+        _ => "carried the ball"
+    };
+
+    private static string LangCode(string language) => language switch
+    {
+        "Spanish" => "es", "French" => "fr", "Portuguese" => "pt", "German" => "de",
+        "Arabic" => "ar", "Hindi" => "hi", "Japanese" => "ja", _ => "en"
+    };
+
+    private static string Pct(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+}

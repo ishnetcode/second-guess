@@ -1,0 +1,27 @@
+@using SecondGuess.Agents
+
+@* The hand-offs between agents for the last answer, in the order they happened. *@
+
+<section class="trace" aria-label="Agent hand-offs">
+    <h3>How the agents got there</h3>
+    <ol>
+        @foreach (var step in Steps)
+        {
+            <li class="@(step.Succeeded ? "" : "failed")">
+                <span class="agent agent-@Slug(step.Agent)">@step.Agent</span>
+                <span class="action">@step.Action</span>
+                <span class="time">@step.Duration.TotalSeconds.ToString("0.0")s</span>
+                @if (!step.Succeeded)
+                {
+                    <span class="detail">@step.Detail</span>
+                }
+            </li>
+        }
+    </ol>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AgentStep> Steps { get; set; } = [];
+
+    private static string Slug(string agent) => agent.ToLowerInvariant().Replace(' ', '-');
+}

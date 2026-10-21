@@ -1,0 +1,36 @@
+@using System.Globalization
+@using SecondGuess.Simulation
+
+@* Every option the engine simulated, as bars scaled to the best one. *@
+
+<section class="options" aria-label="Simulated options">
+    <h3>Every option, simulated @Result.SimulationRuns.ToString("N0", CultureInfo.InvariantCulture) times</h3>
+    <ul>
+        @foreach (var o in Result.Options)
+        {
+            bool isBest = Result.BestAlternative?.Key == o.Key;
+            <li class="@(o.IsActual ? "is-actual" : "") @(isBest && ShowBest ? "is-best" : "")">
+                <span class="label">
+                    @o.Description
+                    @if (o.IsActual) { <em>taken</em> }
+                    @if (isBest && ShowBest) { <em>best</em> }
+                </span>
+                <span class="bar" aria-hidden="true"><span style="width:@Width(o.MeanValue)"></span></span>
+                <span class="value">@Pct(o.MeanValue)</span>
+                <span class="range">@Pct(o.P10)–@Pct(o.P90)</span>
+            </li>
+        }
+    </ul>
+    <p class="note">Chance that each decision leads to a goal from the next shot. Estimates, not certainties.</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public WhatIfResult Result { get; set; } = default!;
+    [Parameter] public bool ShowBest { get; set; }
+
+    private double Max => Math.Max(Result.Options.Max(o => o.MeanValue), 0.0001);
+
+    private string Width(double v) => (v / Max * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    private static string Pct(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+}

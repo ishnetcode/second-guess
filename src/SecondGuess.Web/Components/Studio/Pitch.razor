@@ -1,0 +1,148 @@
+@using System.Globalization
+@using SecondGuess.Simulation
+
+@*
+    The attacking half of the pitch at the frozen moment, drawn like a broadcast telestrator.
+    Coordinates are metres from the acting team's perspective (attacking towards x = 105).
+    The decision actually taken is a thin blue line; the best alternative is drawn in marker yellow.
+*@
+
+<figure class="pitch" aria-label="@Summary">
+    <svg viewBox="44 -3 66 74" role="img" xmlns="http://www.w3.org/2000/svg">
+        <title>@Summary</title>
+
+        @* Turf with mowing stripes *@
+        <rect x="0" y="0" width="105" height="68" class="turf" />
+        @for (int i = 0; i < 12; i++)
+        {
+            if (i % 2 == 0)
+            {
+                <rect x="@F(i * 8.75)" y="0" width="8.75" height="68" class="stripe" />
+            }
+        }
+
+        @* Markings: halfway line, centre circle, penalty area, six-yard box, spot, arc, goal *@
+        <g class="lines">
+            <rect x="0" y="0" width="105" height="68" />
+            <line x1="52.5" y1="0" x2="52.5" y2="68" />
+            <circle cx="52.5" cy="34" r="9.15" />
+            <rect x="88.5" y="13.84" width="16.5" height="40.32" />
+            <rect x="99.5" y="24.84" width="5.5" height="18.32" />
+            <circle cx="94" cy="34" r="0.3" class="spot" />
+            <path d="M 88.5 26.69 A 9.15 9.15 0 0 0 88.5 41.31" />
+            <rect x="105" y="30.34" width="2" height="7.32" class="goal" />
+        </g>
+
+        @if (State is not null && Result is not null)
+        {
+            var ball = new Point2(State.BallX, State.BallY);
+
+            @* The decision that was taken *@
+            @if (Result.ActualAction == "shot")
+            {
+                <line x1="@F(ball.X)" y1="@F(ball.Y)" x2="105" y2="34" class="actual" />
+            }
+            else if (FindPlayer(Result.Actual.TargetPlayerName) is { } actualTarget)
+            {
+                <line x1="@F(ball.X)" y1="@F(ball.Y)" x2="@F(actualTarget.X)" y2="@F(actualTarget.Y)" class="actual" />
+            }
+
+            @* The best alternative, drawn when an answer arrives *@
+            @if (Result.BestAlternative is { } best && ShowAlternative)
+            {
+                @if (best.Kind == "pass" && FindPlayer(best.TargetPlayerName) is { } receiver)
+                {
+                    <path @key="@($"{Result.EventId}-pass")" class="marker"
+                          d="M @F(ball.X) @F(ball.Y) L @F(receiver.X) @F(receiver.Y)" pathLength="1" />
+                    <path @key="@($"{Result.EventId}-finish")" class="marker finish"
+                          d="M @F(receiver.X) @F(receiver.Y) L 105 34" pathLength="1" />
+                    <circle cx="@F(receiver.X)" cy="@F(receiver.Y)" r="2.6" class="ring" />
+                }
+                else if (best.Kind == "carry")
+                {
+                    var end = CarryEnd(ball);
+                    <path @key="@($"{Result.EventId}-carry")" class="marker"
+                          d="M @F(ball.X) @F(ball.Y) L @F(end.X) @F(end.Y)" pathLength="1" />
+                }
+            }
+
+            @* Players *@
+            @foreach (var p in State.Players)
+            {
+                bool isActor = p.Name == Result.PlayerName;
+                bool isTarget = Result.BestAlternative?.TargetPlayerName == p.Name;
+                <g class="player @TeamClass(p.TeamName) @(isActor ? "actor" : "")">
+                    <circle cx="@F(p.X)" cy="@F(p.Y)" r="1.25" />
+                    @if (isActor || (isTarget && ShowAlternative))
+                    {
+                        @NameLabel(p.X, p.Y - 2.2, Surname(p.Name))
+                    }
+                </g>
+            }
+
+            <circle cx="@F(ball.X)" cy="@F(ball.Y)" r="0.65" class="ball" />
+        }
+    </svg>
+
+    @if (Result is not null)
+    {
+        <figcaption>
+            <span class="tag actual-tag">@ActionLabel(Result.Actual) <strong>@Pct(Result.Actual.MeanValue)</strong></span>
+            @if (Result.BestAlternative is { } b && ShowAlternative)
+            {
+                <span class="tag best-tag">@ActionLabel(b) <strong>@Pct(b.MeanValue)</strong></span>
+            }
+            <span class="key">
+                <span class="home">@HomeTeamName</span>
+                <span class="away">@AwayTeamName</span>
+            </span>
+        </figcaption>
+    }
+</figure>
+
+@code {
+    [Parameter] public GameState? State { get; set; }
+    [Parameter] public WhatIfResult? Result { get; set; }
+
+    /// <summary>The alternative is drawn only once the agents have answered, so the reveal lands with the answer.</summary>
+    [Parameter] public bool ShowAlternative { get; set; }
+
+    [Parameter] public string HomeTeamName { get; set; } = "";
+    [Parameter] public string AwayTeamName { get; set; } = "";
+
+    private readonly record struct Point2(double X, double Y);
+
+    private string Summary => Result is null
+        ? "Football pitch"
+        : $"{Result.PlayerName} at {Result.MatchClock}: {ActionLabel(Result.Actual)} {Pct(Result.Actual.MeanValue)}" +
+          (Result.BestAlternative is { } b && ShowAlternative ? $"; best alternative {ActionLabel(b)} {Pct(b.MeanValue)}" : "");
+
+    private PlayerSnapshot? FindPlayer(string? name) =>
+        name is null ? null : State?.Players.FirstOrDefault(p => p.Name == name);
+
+    private string TeamClass(string teamName) => teamName == HomeTeamName ? "home" : "away";
+
+    private static Point2 CarryEnd(Point2 ball)
+    {
+        double dx = 105 - ball.X, dy = 34 - ball.Y, d = Math.Sqrt(dx * dx + dy * dy);
+        double step = Math.Min(6, Math.Max(d - 6, 0));
+        return d == 0 ? ball : new Point2(ball.X + dx / d * step, ball.Y + dy / d * step);
+    }
+
+    private static string ActionLabel(OptionResult o) => o.Kind switch
+    {
+        "shot" => "Shot",
+        "carry" => "Carry and shoot",
+        _ => $"Pass to {Surname(o.TargetPlayerName ?? "")}"
+    };
+
+    private static string Surname(string name) => name.Contains(' ') ? name[(name.LastIndexOf(' ') + 1)..] : name;
+
+    private static string Pct(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    private static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+    // SVG <text> can't be written directly inside Razor code blocks (Razor reserves the <text> tag), so it is emitted as markup.
+    private static MarkupString NameLabel(double x, double y, string name) =>
+        new($"<text x=\"{F(x)}\" y=\"{F(y)}\" class=\"name\">{System.Net.WebUtility.HtmlEncode(name)}</text>");
+}

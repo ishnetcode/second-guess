@@ -172,8 +172,14 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
 
             var stopwatch = Stopwatch.StartNew();
             FactCheckReport report = AnswerFactChecker.Check(session.Draft, session.Simulation!);
+            if (report.Passed && request.Mode == ViewerMode.Fan)
+            {
+                // Fan mode must stay short; enforce it in code rather than trusting the model.
+                var styleIssues = FanStyleIssues(session.Draft);
+                if (styleIssues.Count > 0) report = new FactCheckReport(false, styleIssues, report.NumbersChecked);
+            }
             session.FactCheck = report;
-            session.Trace.Add(new AgentStep("Fact-Checker", "verify numbers",
+            session.Trace.Add(new AgentStep("Fact-Checker", request.Mode == ViewerMode.Fan ? "verify numbers and length" : "verify numbers",
                 report.Passed ? $"{report.NumbersChecked} numbers verified" : string.Join("; ", report.Issues),
                 report.Passed, stopwatch.Elapsed));
 
@@ -258,6 +264,28 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
             throw;
         }
     }
+
+    /// <summary>Fan answers: at most 3 sentences (not counting the source line) and at most 3 percentages.</summary>
+    private static List<string> FanStyleIssues(string answer)
+    {
+        var issues = new List<string>();
+        string body = SourceLine().Replace(answer, "");
+        int sentences = SentenceEnd().Matches(body).Count;
+        int percentages = PercentToken().Matches(body).Count;
+
+        if (sentences > 3) issues.Add($"Fan mode allows at most 3 sentences before the source line; this answer has {sentences}. Cut it down.");
+        if (percentages > 3) issues.Add($"Fan mode allows at most 3 percentages; this answer has {percentages}. Keep only the most important.");
+        return issues;
+    }
+
+    [GeneratedRegex(@"\(Source:[^)]*\)", RegexOptions.IgnoreCase)]
+    private static partial Regex SourceLine();
+
+    [GeneratedRegex(@"[.!?](\s|$)")]
+    private static partial Regex SentenceEnd();
+
+    [GeneratedRegex(@"\d+(?:[.,]\d+)?\s*%")]
+    private static partial Regex PercentToken();
 
     private static MomentPick? ParseMoment(string reply)
     {
