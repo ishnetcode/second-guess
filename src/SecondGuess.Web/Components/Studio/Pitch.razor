@@ -72,6 +72,7 @@
                 bool isActor = p.Name == Result.PlayerName;
                 bool isTarget = Result.BestAlternative?.TargetPlayerName == p.Name;
                 <g class="player @TeamClass(p.TeamName) @(isActor ? "actor" : "")">
+                    <title>@PlayerTooltip(p, isActor, isTarget)</title>
                     <circle cx="@F(p.X)" cy="@F(p.Y)" r="1.25" />
                     @if (isActor || (isTarget && ShowAlternative))
                     {
@@ -134,6 +135,22 @@
         "shot" => "Shot",
         "carry" => "Carry and shoot",
         _ => $"Pass to {Surname(o.TargetPlayerName ?? "")}"
+    };
+
+    private string PlayerTooltip(PlayerSnapshot p, bool isActor, bool isTarget)
+    {
+        string who = $"{p.Name} ({p.Position}), {p.TeamName}";
+        if (isActor) return $"{who}: on the ball, {Outcome()}";
+        string distance = $"{F(p.DistanceToBallMetres)} m from the ball";
+        return isTarget && ShowAlternative ? $"{who}: best pass option, {distance}" : $"{who}: {distance}";
+    }
+
+    private string Outcome() => Result?.ActualAction switch
+    {
+        "shot" => "took the shot",
+        "pass" => "made the pass",
+        "carry" => "carried the ball",
+        _ => "made the decision"
     };
 
     private static string Surname(string name) => name.Contains(' ') ? name[(name.LastIndexOf(' ') + 1)..] : name;
