@@ -29,7 +29,14 @@ public sealed record PlayerSnapshot(
     double DistanceToBallMetres);
 
 /// <summary>Everything an agent needs to describe a moment.</summary>
-public sealed record GameState(MomentSummary Moment, double BallX, double BallY, IReadOnlyList<PlayerSnapshot> Players);
+/// <remarks><see cref="EndX"/>/<see cref="EndY"/> are where the action actually ended (for a shot: where it was saved, blocked, went wide or scored).</remarks>
+public sealed record GameState(
+    MomentSummary Moment,
+    double BallX,
+    double BallY,
+    IReadOnlyList<PlayerSnapshot> Players,
+    double? EndX = null,
+    double? EndY = null);
 
 /// <summary>The football reasons behind an option's value, so answers can explain "why".</summary>
 public sealed record OptionFactors(

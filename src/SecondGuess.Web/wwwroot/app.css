@@ -202,6 +202,23 @@ select {
     stroke-dasharray: 1 0.9;
 }
 
+.pitch .outcome-bar {
+    stroke: var(--actual);
+    stroke-width: 0.6;
+    stroke-linecap: round;
+}
+
+.pitch .outcome-dot { fill: var(--actual); }
+
+.pitch .outcome-label {
+    fill: var(--actual);
+    font: 600 1.9px var(--display);
+    text-anchor: end;
+    paint-order: stroke;
+    stroke: var(--night);
+    stroke-width: 0.45px;
+}
+
 /* The telestrator: thick marker strokes that draw themselves when the answer arrives. */
 .pitch .marker {
     fill: none;

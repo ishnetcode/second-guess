@@ -73,7 +73,7 @@ public static class MomentFinder
             .OrderBy(p => p.DistanceToBallMetres)
             .ToList();
 
-        return new GameState(Summarise(match, e), ball.X, ball.Y, players);
+        return new GameState(Summarise(match, e), ball.X, ball.Y, players, e.EndX, e.EndY);
     }
 
     private static int Minute(MatchEvent e) => int.Parse(e.MatchClock.Split(':')[0]);

@@ -40,7 +40,17 @@
             @* The decision that was taken *@
             @if (Result.ActualAction == "shot")
             {
-                <line x1="@F(ball.X)" y1="@F(ball.Y)" x2="105" y2="34" class="actual" />
+                var shotEnd = ShotEnd();
+                <line x1="@F(ball.X)" y1="@F(ball.Y)" x2="@F(shotEnd.X)" y2="@F(shotEnd.Y)" class="actual" />
+                @if (State.Moment.Outcome == "goal")
+                {
+                    <circle cx="@F(shotEnd.X)" cy="@F(shotEnd.Y)" r="0.8" class="outcome-dot" />
+                }
+                else
+                {
+                    <line x1="@F(shotEnd.X)" y1="@F(shotEnd.Y - 1.3)" x2="@F(shotEnd.X)" y2="@F(shotEnd.Y + 1.3)" class="outcome-bar" />
+                }
+                @OutcomeLabel(shotEnd.X, shotEnd.Y, State.Moment.Outcome)
             }
             else if (FindPlayer(Result.Actual.TargetPlayerName) is { } actualTarget)
             {
@@ -122,6 +132,38 @@
         name is null ? null : State?.Players.FirstOrDefault(p => p.Name == name);
 
     private string TeamClass(string teamName) => teamName == HomeTeamName ? "home" : "away";
+
+    /// <summary>Where the shot really ended. Saved shots end at the goalkeeper who saved them.</summary>
+    private Point2 ShotEnd()
+    {
+        double x = State?.EndX ?? 105, y = State?.EndY ?? 34;
+        if (State?.Moment.Outcome != "saved") return new Point2(x, y);
+
+        var keeper = State!.Players.FirstOrDefault(p => !p.IsTeammate && p.Position == "GK");
+        if (keeper is null) return new Point2(Math.Min(x, 103.2), y);
+
+        // Stop just in front of the keeper, on the side the ball came from.
+        double dx = keeper.X - State.BallX, dy = keeper.Y - State.BallY, d = Math.Sqrt(dx * dx + dy * dy);
+        return d < 2 ? new Point2(keeper.X, keeper.Y) : new Point2(keeper.X - dx / d * 1.6, keeper.Y - dy / d * 1.6);
+    }
+
+    private static MarkupString OutcomeLabel(double x, double y, string? outcome)
+    {
+        string text = outcome switch
+        {
+            "goal" => "Goal",
+            "saved" => "Saved",
+            "blocked" => "Blocked",
+            "off_target" => "Wide",
+            _ => ""
+        };
+        if (text == "") return new MarkupString("");
+
+        // Place the label inside the pitch, just in front of where the shot ended.
+        double labelX = Math.Min(x - 1.5, 101.5);
+        double labelY = y < 34 ? y - 1.8 : y + 3.2;
+        return new($"<text x=\"{F(labelX)}\" y=\"{F(labelY)}\" class=\"outcome-label\">{text}</text>");
+    }
 
     private static Point2 CarryEnd(Point2 ball)
     {
