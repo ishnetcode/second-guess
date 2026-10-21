@@ -29,8 +29,8 @@
 
             <fieldset class="mode" disabled="@busy">
                 <legend>View</legend>
-                <button type="button" aria-pressed="@(mode == ViewerMode.Fan)" @onclick="() => mode = ViewerMode.Fan">Fan</button>
-                <button type="button" aria-pressed="@(mode == ViewerMode.Expert)" @onclick="() => mode = ViewerMode.Expert">Expert</button>
+                <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Fan)" @onclick="() => mode = ViewerMode.Fan">Fan</button>
+                <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Expert)" @onclick="() => mode = ViewerMode.Expert">Expert</button>
             </fieldset>
 
             <label>
@@ -154,7 +154,7 @@
                     @foreach (var d in decisions)
                     {
                         <li>
-                            <button type="button" aria-pressed="@(d.EventId == view?.Result.EventId)" disabled="@busy"
+                            <button type="button" aria-pressed="@Pressed(d.EventId == view?.Result.EventId)" disabled="@busy"
                                     @onclick="() => SelectDecisionAsync(d)">
                                 <span class="clock">@d.MatchClock</span>
                                 <span class="who">@d.PlayerName</span>
@@ -239,17 +239,16 @@
 
         try
         {
-            // If a moment is selected and the question is about it, tell the Moment Finder which event to use.
-            string prompt = selected is not null && question.Contains(selected.MatchClock)
-                ? $"{question} (event {selected.EventId})"
-                : question;
+            // If the question is about the selected moment, pass its event ID so the agents skip the search.
+            bool aboutSelected = selected is not null && question.Contains(selected.MatchClock);
 
             var request = new WhatIfRequest(
-                Question: prompt,
+                Question: question,
                 MatchId: matchId,
                 Mode: mode,
                 Language: language,
-                FavouriteTeam: string.IsNullOrEmpty(favouriteTeam) ? null : favouriteTeam);
+                FavouriteTeam: string.IsNullOrEmpty(favouriteTeam) ? null : favouriteTeam,
+                EventId: aboutSelected ? selected!.EventId : null);
 
             answer = await Service.AskAsync(request);
 
@@ -293,4 +292,7 @@
     };
 
     private static string Pct(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    // Blazor renders a bool true as an empty attribute, so aria-pressed needs explicit "true"/"false" strings.
+    private static string Pressed(bool value) => value ? "true" : "false";
 }

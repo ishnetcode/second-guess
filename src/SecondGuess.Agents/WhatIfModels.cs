@@ -17,7 +17,8 @@ public sealed record WhatIfRequest(
     string? MatchId = null,
     ViewerMode Mode = ViewerMode.Fan,
     string Language = "English",
-    string? FavouriteTeam = null);
+    string? FavouriteTeam = null,
+    string? EventId = null);   // set when the viewer picked a specific moment, so no search is needed
 
 /// <summary>The moment the Moment Finder chose, and why.</summary>
 public sealed record MomentPick(string MatchId, string EventId, string Reason);

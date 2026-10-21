@@ -45,9 +45,9 @@ public sealed class SecondGuessService : IAsyncDisposable
 
     public IReadOnlyList<MatchListItem> ListMatches() => _repository.ListMatches();
 
-    /// <summary>The shots where another option was best, simulated once per match and cached.</summary>
+    /// <summary>The shots where another option was best, simulated once per match (same run count as the full simulation) and cached.</summary>
     public Task<IReadOnlyList<DecisionRanking>> GetKeyDecisionsAsync(string matchId) =>
-        Task.Run(() => _keyDecisions.GetOrAdd(matchId, id => _engine.RankDecisions(_repository.Get(id), limit: 6)));
+        Task.Run(() => _keyDecisions.GetOrAdd(matchId, id => _engine.RankDecisions(_repository.Get(id), limit: 6, runs: WhatIfEngine.DefaultRuns)));
 
     /// <summary>Instant, deterministic preview of a moment: player positions plus the simulated options.</summary>
     public Task<MomentView> PreviewAsync(string matchId, string eventId) => Task.Run(() =>

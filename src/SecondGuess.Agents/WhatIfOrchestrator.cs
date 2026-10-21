@@ -111,6 +111,15 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
     {
         string? feedback = null;
 
+        // The viewer already picked a moment (for example by clicking it in the studio): no search needed.
+        if (session.Request.EventId is { } chosenEvent && session.Request.MatchId is { } chosenMatch)
+        {
+            var pick = new MomentPick(chosenMatch, chosenEvent, "Moment selected by the viewer");
+            session.Trace.Add(new AgentStep("Moment Finder", "use selected moment", $"{chosenMatch}/{chosenEvent}", true, TimeSpan.Zero));
+            if (await TrySimulateAsync(session, pick, ct) is null) return;
+            feedback = "the selected moment could not be simulated";
+        }
+
         for (int attempt = 1; attempt <= MaxMomentAttempts; attempt++)
         {
             string prompt = $"""
@@ -126,26 +135,31 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
                 feedback = "the reply was not the required JSON";
                 continue;
             }
-            session.Moment = pick;
-
-            // Simulator: deterministic call to the MCP tool, so the numbers are exact and reproducible.
-            string json = await RunStepAsync(session, "Simulator", $"simulate {pick.MatchId}/{pick.EventId}",
-                () => CallMcpToolAsync("simulate_options", new() { ["matchId"] = pick.MatchId, ["eventId"] = pick.EventId }, ct));
-
-            if (TryParseError(json, out string error))
-            {
-                feedback = error;
-                session.Trace.Add(new AgentStep("Simulator", "reject moment", error, false, TimeSpan.Zero));
-                continue;
-            }
-
-            session.SimulationJson = json;
-            session.Simulation = JsonSerializer.Deserialize<WhatIfResult>(json, JsonDefaults.Compact)
-                                 ?? throw new InvalidOperationException("The simulation returned no result.");
-            return;
+            string? error = await TrySimulateAsync(session, pick, ct);
+            if (error is null) return;
+            feedback = error;
         }
 
         throw new InvalidOperationException($"Could not find a moment that matches the question. Last problem: {feedback}");
+    }
+
+    /// <summary>Simulator: deterministic call to the MCP tool. Returns null on success, or the error to send back.</summary>
+    private async Task<string?> TrySimulateAsync(WhatIfSession session, MomentPick pick, CancellationToken ct)
+    {
+        session.Moment = pick;
+        string json = await RunStepAsync(session, "Simulator", $"simulate {pick.MatchId}/{pick.EventId}",
+            () => CallMcpToolAsync("simulate_options", new() { ["matchId"] = pick.MatchId, ["eventId"] = pick.EventId }, ct));
+
+        if (TryParseError(json, out string error))
+        {
+            session.Trace.Add(new AgentStep("Simulator", "reject moment", error, false, TimeSpan.Zero));
+            return error;
+        }
+
+        session.SimulationJson = json;
+        session.Simulation = JsonSerializer.Deserialize<WhatIfResult>(json, JsonDefaults.Compact)
+                             ?? throw new InvalidOperationException("The simulation returned no result.");
+        return null;
     }
 
     // ------------------------------------------------------------ agents 3 + 4

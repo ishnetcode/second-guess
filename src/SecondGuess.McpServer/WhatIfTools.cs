@@ -49,7 +49,7 @@ public static class WhatIfTools
         string key = $"{matchId}|{eventType}|{limit}";
         if (RankingCache.TryGetValue(key, out string? cached)) return cached;
 
-        string json = Run(() => engine.RankDecisions(repository.Get(matchId), eventType, limit));
+        string json = Run(() => engine.RankDecisions(repository.Get(matchId), eventType, limit, WhatIfEngine.DefaultRuns));
         if (!json.Contains("\"error\"")) RankingCache[key] = json;   // never cache failures
         return json;
     }
