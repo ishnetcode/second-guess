@@ -42,7 +42,7 @@ public sealed record WhatIfAnswer(
 /// Shared state passed between the agents. Each agent reads what earlier agents produced and adds its
 /// own output, so the whole run can be inspected afterwards.
 /// </summary>
-public sealed class WhatIfSession(WhatIfRequest request)
+public sealed class WhatIfSession(WhatIfRequest request, Action<AgentStep>? onStep = null)
 {
     public WhatIfRequest Request { get; } = request;
     public MomentPick? Moment { get; set; }
@@ -53,6 +53,13 @@ public sealed class WhatIfSession(WhatIfRequest request)
     public int ExplainerAttempts { get; set; }
     public string? FinalAnswer { get; set; }
     public List<AgentStep> Trace { get; } = [];
+
+    /// <summary>Records a hand-off and reports it live (for example to the studio UI).</summary>
+    public void AddStep(AgentStep step)
+    {
+        Trace.Add(step);
+        onStep?.Invoke(step);
+    }
 }
 
 /// <summary>Settings for connecting to Microsoft Foundry and the Second Guess MCP server.</summary>

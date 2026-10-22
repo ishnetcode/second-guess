@@ -57,7 +57,7 @@ public sealed class SecondGuessService : IAsyncDisposable
     });
 
     /// <summary>Runs the full multi-agent pipeline.</summary>
-    public async Task<WhatIfAnswer> AskAsync(WhatIfRequest request, CancellationToken cancellationToken = default)
+    public async Task<WhatIfAnswer> AskAsync(WhatIfRequest request, Action<AgentStep>? onStep = null, CancellationToken cancellationToken = default)
     {
         if (_settings is null) throw new InvalidOperationException(AgentsUnavailableReason);
 
@@ -71,7 +71,7 @@ public sealed class SecondGuessService : IAsyncDisposable
             _startGate.Release();
         }
 
-        return await _orchestrator.AskAsync(request, cancellationToken);
+        return await _orchestrator.AskAsync(request, cancellationToken, onStep);
     }
 
     private static string FindRepoRoot(string start)

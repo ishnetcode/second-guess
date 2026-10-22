@@ -84,10 +84,7 @@ h1, h2, h3 {
     gap: calc(var(--space) * 2);
 }
 
-.controls label,
 .mode {
-    display: grid;
-    gap: 4px;
     font-size: 14px;
     color: var(--muted);
 }
@@ -111,13 +108,16 @@ select {
     border: 0;
     margin: 0;
     padding: 0;
+    display: inline-grid;
     grid-template-columns: auto auto;
 }
 
 .mode legend {
-    grid-column: 1 / -1;
-    padding: 0;
-    margin-bottom: 4px;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
 }
 
 .mode button {
@@ -136,13 +136,126 @@ select {
     font-weight: 600;
 }
 
+.match-picker {
+    display: grid;
+    gap: 4px;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.match-picker select { min-width: 280px; }
+
+/* ---------------------------------------------------------------- steps */
+
+.step {
+    display: inline-grid;
+    place-items: center;
+    width: 1.35em;
+    height: 1.35em;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--chalk);
+    color: var(--night);
+    font-size: 0.8em;
+    font-weight: 700;
+    vertical-align: 0.08em;
+}
+
+.moments,
+.ask,
+.verdict {
+    display: grid;
+    gap: calc(var(--space) * 1.5);
+}
+
+.moments h2,
+.ask h2,
+.verdict h2 {
+    font-size: 24px;
+}
+
+/* ---------------------------------------------------------------- step 1: moment strip */
+
+.moments {
+    padding-top: calc(var(--space) * 3);
+}
+
+.moment-strip {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 6px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(190px, 1fr);
+    gap: calc(var(--space) * 1.5);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+}
+
+.moment-strip li { scroll-snap-align: start; }
+
+.moment-card {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    gap: 4px;
+    text-align: left;
+    padding: 12px 14px;
+    background: transparent;
+    border: 1px solid var(--night-line);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+}
+
+.moment-card:hover { border-color: var(--muted); }
+
+.moment-card[aria-pressed="true"] {
+    border-color: var(--marker);
+    background: var(--night-raised);
+}
+
+.moment-card .clock {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.moment-card .who {
+    font-weight: 600;
+}
+
+.moment-card .compare {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.moment-card .compare .arrow { margin: 0 4px; }
+.moment-card .compare .could { color: var(--chalk); }
+
+.moment-card .gap {
+    display: grid;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.moment-card .gap span {
+    display: block;
+    height: 4px;
+    border-radius: 999px;
+    min-width: 2px;
+}
+
+.moment-card .gap-was { background: var(--actual); }
+.moment-card .gap-could { background: var(--marker); }
+
 /* ---------------------------------------------------------------- board */
 
 .board {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
     gap: calc(var(--space) * 4);
-    padding-top: calc(var(--space) * 3);
+    padding-top: calc(var(--space) * 4);
 }
 
 .moment-line {
@@ -168,6 +281,13 @@ select {
 
 .moment-line .what { color: var(--muted); }
 
+.how-to-read {
+    margin: 0 0 calc(var(--space) * 1.5);
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 70ch;
+}
+
 /* ---------------------------------------------------------------- pitch */
 
 .pitch {
@@ -178,6 +298,7 @@ select {
     display: block;
     width: 100%;
     height: auto;
+    max-height: min(62vh, 620px);
     border-radius: var(--radius);
     background: var(--turf);
 }
@@ -323,6 +444,17 @@ select {
 
 .key .home::before { background: var(--home); }
 .key .away::before { background: var(--away); }
+
+.key .line-actual::before,
+.key .line-best::before {
+    width: 18px;
+    height: 0;
+    border-radius: 0;
+    vertical-align: 4px;
+}
+
+.key .line-actual::before { border-top: 2px dashed var(--actual); }
+.key .line-best::before { border-top: 4px solid var(--marker); }
 .best-tag { border-color: var(--marker); }
 
 /* ---------------------------------------------------------------- options chart */
@@ -332,10 +464,15 @@ select {
 }
 
 .options h3,
-.trace h3,
-.decisions h2 {
+.trace h3 {
     font-size: 22px;
     margin-bottom: calc(var(--space) * 1.5);
+}
+
+.options .sub {
+    margin: -6px 0 calc(var(--space) * 1.5);
+    color: var(--muted);
+    font-size: 15px;
 }
 
 .options ul {
@@ -348,7 +485,7 @@ select {
 
 .options li {
     display: grid;
-    grid-template-columns: minmax(150px, 1.3fr) minmax(80px, 2fr) 58px 92px;
+    grid-template-columns: minmax(150px, 1.3fr) minmax(80px, 2fr) 58px 110px;
     align-items: center;
     gap: 12px;
     font-size: 15px;
@@ -404,45 +541,113 @@ select {
 .desk {
     display: grid;
     align-content: start;
-    gap: calc(var(--space) * 3);
+    gap: calc(var(--space) * 4);
 }
 
-.ask {
-    display: grid;
+.quick {
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--space);
 }
 
-.ask label {
-    font-family: var(--display);
-    font-size: 22px;
-    font-weight: 600;
-}
-
-.ask textarea {
-    resize: vertical;
-    padding: 12px;
-    background: var(--night-raised);
-    border: 1px solid var(--night-line);
-    border-radius: var(--radius-small);
-    line-height: 1.4;
-}
-
-.ask button {
-    justify-self: start;
-    padding: 10px 22px;
+.quick button,
+.ask-button {
+    padding: 10px 18px;
     border: 0;
-    border-radius: var(--radius-small);
-    background: var(--marker);
+    border-radius: 999px;
+    background: var(--chalk);   /* marker yellow is reserved for the better option */
     color: var(--night);
     font-weight: 600;
     cursor: pointer;
 }
 
-.ask button:disabled {
+.quick button:hover:not(:disabled),
+.ask-button:hover:not(:disabled) { filter: brightness(1.08); }
+
+.quick button:disabled,
+.ask-button:disabled {
     background: var(--night-line);
     color: var(--muted);
     cursor: not-allowed;
 }
+
+.ask .own {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.own-row {
+    display: flex;
+    gap: var(--space);
+    margin-top: 4px;
+}
+
+.own-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    font: inherit;
+    color: var(--chalk);
+    background: var(--night-raised);
+    border: 1px solid var(--night-line);
+    border-radius: var(--radius-small);
+}
+
+.own-row .ask-button { border-radius: var(--radius-small); }
+
+.preferences {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 14px;
+    padding-top: 4px;
+    color: var(--muted);
+    font-size: 15px;
+}
+
+.preferences label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preferences select { min-width: 0; }
+
+.placeholder {
+    margin: 0;
+    color: var(--muted);
+}
+
+.live-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+}
+
+.live-steps li {
+    display: grid;
+    grid-template-columns: 22px 140px 1fr;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.live-steps li::before { font-weight: 700; }
+.live-steps .done::before { content: "✓"; color: var(--home); }
+.live-steps .failed::before { content: "✗"; color: var(--danger); }
+.live-steps .working::before { content: "•"; color: var(--marker); animation: pulse-dot 1s ease-in-out infinite; }
+
+.live-steps .agent {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.live-steps .action { color: var(--muted); }
+.live-steps .working .action { color: var(--chalk); }
+
+@keyframes pulse-dot { 50% { opacity: 0.25; } }
 
 .hint {
     margin: 0;
@@ -450,21 +655,6 @@ select {
     font-size: 14px;
 }
 
-.progress {
-    margin: 0;
-    padding-left: 20px;
-    color: var(--muted);
-}
-
-.progress li {
-    animation: pulse 1.6s ease-in-out infinite;
-}
-
-.progress li:nth-child(2) { animation-delay: 0.3s; }
-.progress li:nth-child(3) { animation-delay: 0.6s; }
-.progress li:nth-child(4) { animation-delay: 0.9s; }
-
-@keyframes pulse { 50% { color: var(--chalk); } }
 
 .error {
     margin: 0;
@@ -549,57 +739,7 @@ select {
 .trace .failed .agent { color: var(--danger); }
 .trace .agent-fact-checker { color: var(--home); }
 
-/* ---------------------------------------------------------------- key decisions */
-
-.decisions {
-    margin-top: calc(var(--space) * 5);
-    padding-top: calc(var(--space) * 3);
-    border-top: 1px solid var(--night-line);
-}
-
-.decisions ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: calc(var(--space) * 1.5);
-}
-
-.decisions button {
-    width: 100%;
-    display: grid;
-    gap: 2px;
-    text-align: left;
-    padding: 12px 14px;
-    background: transparent;
-    border: 1px solid var(--night-line);
-    border-radius: var(--radius-small);
-    cursor: pointer;
-}
-
-.decisions button:hover { border-color: var(--muted); }
-
-.decisions button[aria-pressed="true"] {
-    border-color: var(--marker);
-    background: var(--night-raised);
-}
-
-.decisions .clock {
-    font-family: var(--display);
-    font-size: 22px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-
-.decisions .who { font-weight: 500; }
-
-.decisions .numbers {
-    color: var(--muted);
-    font-size: 14px;
-}
-
-.loading { color: var(--muted); }
+.loading { color: var(--muted); margin: 0; }
 
 .empty pre {
     padding: 12px;
@@ -617,9 +757,8 @@ select {
 @media (max-width: 560px) {
     .studio { padding: 16px; }
     .brand h1 { font-size: 36px; }
-    .controls { width: 100%; }
-    .controls label { flex: 1 1 140px; }
-    select { min-width: 0; width: 100%; }
+    .match-picker, .match-picker select { width: 100%; min-width: 0; }
+    .moment-strip { grid-auto-columns: 75%; }
     .options li { grid-template-columns: 1fr 58px; }
     .options .bar { grid-column: 1 / -1; grid-row: 2; }
     .options .range { display: none; }
@@ -630,5 +769,5 @@ select {
 @media (prefers-reduced-motion: reduce) {
     .pitch .marker { animation: none; stroke-dashoffset: 0; }
     .pitch .ring { animation: none; opacity: 1; }
-    .progress li { animation: none; }
+    .live-steps .working::before { animation: none; }
 }

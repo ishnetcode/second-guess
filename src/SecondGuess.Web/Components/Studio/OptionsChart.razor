@@ -4,7 +4,8 @@
 @* Every option the engine simulated, as bars scaled to the best one. *@
 
 <section class="options" aria-label="Simulated options">
-    <h3>Every option, simulated @Result.SimulationRuns.ToString("N0", CultureInfo.InvariantCulture) times</h3>
+    <h3>What each option was worth</h3>
+    <p class="sub">Chance of a goal from the next shot, from @Result.SimulationRuns.ToString("N0", CultureInfo.InvariantCulture) simulations of this moment.</p>
     <ul>
         @foreach (var o in Result.Options)
         {
@@ -12,16 +13,16 @@
             <li class="@(o.IsActual ? "is-actual" : "") @(isBest && ShowBest ? "is-best" : "")">
                 <span class="label">
                     @o.Description
-                    @if (o.IsActual) { <em>taken</em> }
+                    @if (o.IsActual) { <em>what he did</em> }
                     @if (isBest && ShowBest) { <em>best</em> }
                 </span>
                 <span class="bar" aria-hidden="true"><span style="width:@Width(o.MeanValue)"></span></span>
                 <span class="value">@Pct(o.MeanValue)</span>
-                <span class="range">@Pct(o.P10)–@Pct(o.P90)</span>
+                <span class="range" title="In 8 out of 10 simulations the value fell in this range">likely @Pct0(o.P10)–@Pct0(o.P90)</span>
             </li>
         }
     </ul>
-    <p class="note">Chance that each decision leads to a goal from the next shot. Estimates, not certainties.</p>
+    <p class="note">These are estimates, not certainties. "Likely" is the range the value fell in for 8 out of 10 simulations.</p>
 </section>
 
 @code {
@@ -31,6 +32,8 @@
     private double Max => Math.Max(Result.Options.Max(o => o.MeanValue), 0.0001);
 
     private string Width(double v) => (v / Max * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    private static string Pct0(double v) => (v * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 
     private static string Pct(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
 }

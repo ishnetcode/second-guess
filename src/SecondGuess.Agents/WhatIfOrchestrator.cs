@@ -83,10 +83,10 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         return new WhatIfOrchestrator(settings, mcp, momentFinder, explainer, localiser);
     }
 
-    /// <summary>Answers a what-if question end to end.</summary>
-    public async Task<WhatIfAnswer> AskAsync(WhatIfRequest request, CancellationToken cancellationToken = default)
+    /// <summary>Answers a what-if question end to end. <paramref name="onStep"/> is called as each agent finishes.</summary>
+    public async Task<WhatIfAnswer> AskAsync(WhatIfRequest request, CancellationToken cancellationToken = default, Action<AgentStep>? onStep = null)
     {
-        var session = new WhatIfSession(request);
+        var session = new WhatIfSession(request, onStep);
 
         await FindAndSimulateAsync(session, cancellationToken);
         await ExplainWithFactCheckAsync(session, cancellationToken);
@@ -115,7 +115,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         if (session.Request.EventId is { } chosenEvent && session.Request.MatchId is { } chosenMatch)
         {
             var pick = new MomentPick(chosenMatch, chosenEvent, "Moment selected by the viewer");
-            session.Trace.Add(new AgentStep("Moment Finder", "use selected moment", $"{chosenMatch}/{chosenEvent}", true, TimeSpan.Zero));
+            session.AddStep(new AgentStep("Moment Finder", "use selected moment", $"{chosenMatch}/{chosenEvent}", true, TimeSpan.Zero));
             if (await TrySimulateAsync(session, pick, ct) is null) return;
             feedback = "the selected moment could not be simulated";
         }
@@ -152,7 +152,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
 
         if (TryParseError(json, out string error))
         {
-            session.Trace.Add(new AgentStep("Simulator", "reject moment", error, false, TimeSpan.Zero));
+            session.AddStep(new AgentStep("Simulator", "reject moment", error, false, TimeSpan.Zero));
             return error;
         }
 
@@ -193,7 +193,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
                 if (styleIssues.Count > 0) report = new FactCheckReport(false, styleIssues, report.NumbersChecked);
             }
             session.FactCheck = report;
-            session.Trace.Add(new AgentStep("Fact-Checker", request.Mode == ViewerMode.Fan ? "verify numbers and length" : "verify numbers",
+            session.AddStep(new AgentStep("Fact-Checker", request.Mode == ViewerMode.Fan ? "verify numbers and length" : "verify numbers",
                 report.Passed ? $"{report.NumbersChecked} numbers verified" : string.Join("; ", report.Issues),
                 report.Passed, stopwatch.Elapsed));
 
@@ -232,7 +232,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
             translated = (await RunStepAsync(session, "Localiser", $"translate to {language}", () => RunAgentAsync(_localiser, prompt, ct))).Trim();
 
             var report = AnswerFactChecker.CheckTranslation(session.Draft!, translated, session.Simulation!);
-            session.Trace.Add(new AgentStep("Fact-Checker", "verify translation",
+            session.AddStep(new AgentStep("Fact-Checker", "verify translation",
                 report.Passed ? "numbers preserved" : string.Join("; ", report.Issues), report.Passed, TimeSpan.Zero));
             if (report.Passed) break;
         }
@@ -269,12 +269,12 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         try
         {
             string output = await step();
-            session.Trace.Add(new AgentStep(agent, action, Summarise(output), true, stopwatch.Elapsed));
+            session.AddStep(new AgentStep(agent, action, Summarise(output), true, stopwatch.Elapsed));
             return output;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            session.Trace.Add(new AgentStep(agent, action, ex.Message, false, stopwatch.Elapsed));
+            session.AddStep(new AgentStep(agent, action, ex.Message, false, stopwatch.Elapsed));
             throw;
         }
     }

@@ -13,47 +13,21 @@
     <header class="masthead">
         <div class="brand">
             <h1>Second Guess</h1>
-            <p>Pick a moment, or ask your own what-if.</p>
+            <p>Every big moment had other options. See what they were worth.</p>
         </div>
 
-        <div class="controls">
-            <label>
+        @if (matches.Count > 0)
+        {
+            <label class="match-picker">
                 <span>Match</span>
                 <select @bind="matchId" @bind:after="LoadMatchAsync" disabled="@busy">
                     @foreach (var m in matches)
                     {
-                        <option value="@m.MatchId">@m.Home @m.FinalScore @m.Away (@m.MatchId)</option>
+                        <option value="@m.MatchId">@m.Home @m.FinalScore @m.Away</option>
                     }
                 </select>
             </label>
-
-            <fieldset class="mode" disabled="@busy">
-                <legend>View</legend>
-                <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Fan)" @onclick="() => mode = ViewerMode.Fan">Fan</button>
-                <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Expert)" @onclick="() => mode = ViewerMode.Expert">Expert</button>
-            </fieldset>
-
-            <label>
-                <span>Language</span>
-                <select @bind="language" disabled="@busy">
-                    @foreach (var lang in Languages)
-                    {
-                        <option value="@lang">@lang</option>
-                    }
-                </select>
-            </label>
-
-            <label>
-                <span>Your team</span>
-                <select @bind="favouriteTeam" disabled="@busy">
-                    <option value="">No preference</option>
-                    @foreach (var team in Teams)
-                    {
-                        <option value="@team">@team</option>
-                    }
-                </select>
-            </label>
-        </div>
+        }
     </header>
 
     @if (matches.Count == 0)
@@ -66,8 +40,45 @@
     }
     else
     {
+        @* Step 1: pick a moment *@
+        <section class="moments" aria-labelledby="moments-heading">
+            <h2 id="moments-heading"><span class="step">1</span> Pick a moment</h2>
+            @if (decisions is null)
+            {
+                <p class="loading">Simulating every shot in the match…</p>
+            }
+            else if (decisions.Count == 0)
+            {
+                <p class="loading">No shots in this match had a better alternative. Try another match.</p>
+            }
+            else
+            {
+                <ul class="moment-strip">
+                    @foreach (var d in decisions)
+                    {
+                        <li>
+                            <button type="button" class="moment-card" aria-pressed="@Pressed(d.EventId == view?.Result.EventId)" disabled="@busy"
+                                    @onclick="() => SelectDecisionAsync(d)">
+                                <span class="clock">@d.MatchClock</span>
+                                <span class="who">@Surname(d.PlayerName)</span>
+                                <span class="compare">
+                                    <span class="was">Shot @Pct0(d.ActualValue)</span>
+                                    <span class="arrow" aria-hidden="true">›</span>
+                                    <span class="could">@ShortOption(d.BestAlternative) @Pct0(d.BestAlternativeValue)</span>
+                                </span>
+                                <span class="gap" aria-hidden="true">
+                                    <span class="gap-was" style="width:@Share(d.ActualValue, d)"></span>
+                                    <span class="gap-could" style="width:@Share(d.BestAlternativeValue, d)"></span>
+                                </span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
         <main class="board">
-            <section class="stage">
+            <section class="stage" aria-label="The moment">
                 @if (view is not null)
                 {
                     <div class="moment-line">
@@ -75,6 +86,7 @@
                         <span class="who">@view.Result.PlayerName, @view.Result.TeamName</span>
                         <span class="what">@Outcome(view.Result)</span>
                     </div>
+                    <p class="how-to-read">Each dot is a player where they stood at that moment. Blue shows what happened. Yellow shows the better option, once you ask.</p>
                 }
 
                 <Pitch State="view?.State" Result="view?.Result" ShowAlternative="@revealed" HomeTeamName="@homeTeam" AwayTeamName="@awayTeam" />
@@ -86,94 +98,129 @@
             </section>
 
             <aside class="desk">
-                <form class="ask" @onsubmit="AskAsync" @onsubmit:preventDefault>
-                    <label for="question">Your question</label>
-                    <textarea id="question" rows="3" @bind="question" @bind:event="oninput" disabled="@busy"
-                              placeholder="Which shot should have been a pass?"></textarea>
-                    <button type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(question) || Service.AgentsUnavailableReason is not null)">
-                        @(busy ? "Agents are working…" : "Ask the agents")
-                    </button>
+                @* Step 2: ask *@
+                <section class="ask" aria-labelledby="ask-heading">
+                    <h2 id="ask-heading"><span class="step">2</span> Ask about it</h2>
+
                     @if (Service.AgentsUnavailableReason is { } reason)
                     {
-                        <p class="hint">@reason You can still pick moments and see the simulation.</p>
+                        <p class="hint">@reason The pitch and options above still work.</p>
                     }
-                </form>
 
-                @if (busy)
-                {
-                    <ol class="progress" aria-live="polite">
-                        <li>Moment Finder is choosing the moment</li>
-                        <li>Simulator is running the options</li>
-                        <li>Explainer is writing, Fact-Checker is checking every number</li>
-                        @if (!IsEnglish)
+                    <div class="quick" role="group" aria-label="Suggested questions">
+                        @foreach (var q in QuickQuestions)
                         {
-                            <li>Localiser is translating to @language</li>
+                            <button type="button" disabled="@(busy || view is null || Service.AgentsUnavailableReason is not null)"
+                                    @onclick="() => AskQuickAsync(q)">@q.Label</button>
                         }
-                    </ol>
-                }
+                    </div>
 
-                @if (error is not null)
-                {
-                    <p class="error" role="alert">@error</p>
-                }
+                    <form @onsubmit="AskTypedAsync" @onsubmit:preventDefault>
+                        <label for="question" class="own">Or ask your own</label>
+                        <div class="own-row">
+                            <input id="question" type="text" @bind="question" @bind:event="oninput" disabled="@busy"
+                                   placeholder="What if he had played it to Okoro?" />
+                            <button type="submit" class="ask-button"
+                                    disabled="@(busy || string.IsNullOrWhiteSpace(question) || Service.AgentsUnavailableReason is not null)">Ask</button>
+                        </div>
+                    </form>
 
-                @if (answer is not null && !busy)
-                {
-                    <article class="answer">
-                        <p dir="auto" lang="@LangCode(answer.Language)">@answer.Answer</p>
-                        <footer class="@(answer.FactCheck.Passed ? "checked" : "unchecked")">
-                            @if (answer.FactCheck.Passed)
-                            {
-                                <span>Fact-checked: @answer.FactCheck.NumbersChecked numbers match the simulation</span>
-                            }
-                            else
-                            {
-                                <span>Some numbers could not be verified: @string.Join(" ", answer.FactCheck.Issues)</span>
-                            }
-                            @if (answer.ExplainerAttempts > 1)
-                            {
-                                <span>Rewritten @(answer.ExplainerAttempts - 1) time(s) after the fact-check</span>
-                            }
-                        </footer>
-                    </article>
+                    <div class="preferences">
+                        <label>
+                            Answer in
+                            <select @bind="language" disabled="@busy">
+                                @foreach (var lang in Languages)
+                                {
+                                    <option value="@lang">@lang</option>
+                                }
+                            </select>
+                        </label>
+                        <label>
+                            as
+                            <select @bind="favouriteTeam" disabled="@busy">
+                                <option value="">a neutral fan</option>
+                                <option value="@homeTeam">a @homeTeam fan</option>
+                                <option value="@awayTeam">an @awayTeam fan</option>
+                            </select>
+                        </label>
+                        <fieldset class="mode" disabled="@busy">
+                            <legend>Detail</legend>
+                            <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Fan)" @onclick="() => mode = ViewerMode.Fan">Quick take</button>
+                            <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Expert)" @onclick="() => mode = ViewerMode.Expert">Full analysis</button>
+                        </fieldset>
+                    </div>
+                </section>
 
-                    <AgentTrace Steps="answer.Trace" />
-                }
+                @* Step 3: the verdict *@
+                <section class="verdict" aria-labelledby="verdict-heading" aria-live="polite">
+                    <h2 id="verdict-heading"><span class="step">3</span> The verdict</h2>
+
+                    @if (busy)
+                    {
+                        <ol class="live-steps">
+                            @foreach (var step in liveSteps)
+                            {
+                                <li class="@(step.Succeeded ? "done" : "failed")">
+                                    <span class="agent">@step.Agent</span>
+                                    <span class="action">@step.Action</span>
+                                </li>
+                            }
+                            <li class="working">
+                                <span class="agent">@NextAgent</span>
+                                <span class="action">@NextAction</span>
+                            </li>
+                        </ol>
+                    }
+                    else if (error is not null)
+                    {
+                        <p class="error" role="alert">@error</p>
+                    }
+                    else if (answer is not null)
+                    {
+                        <article class="answer">
+                            <p dir="auto" lang="@LangCode(answer.Language)">@answer.Answer</p>
+                            <footer class="@(answer.FactCheck.Passed ? "checked" : "unchecked")">
+                                @if (answer.FactCheck.Passed)
+                                {
+                                    <span>Fact-checked: @answer.FactCheck.NumbersChecked numbers match the simulation</span>
+                                }
+                                else
+                                {
+                                    <span>Some numbers could not be verified: @string.Join(" ", answer.FactCheck.Issues)</span>
+                                }
+                                @if (answer.ExplainerAttempts > 1)
+                                {
+                                    <span>Rewritten @(answer.ExplainerAttempts - 1) time(s) after the fact-check</span>
+                                }
+                            </footer>
+                        </article>
+
+                        <AgentTrace Steps="answer.Trace" />
+                    }
+                    else
+                    {
+                        <p class="placeholder">Choose a question above. Five AI agents will find the moment, simulate it, explain the better option and check every number before you see it.</p>
+                    }
+                </section>
             </aside>
         </main>
-
-        <section class="decisions" aria-label="Key decisions in this match">
-            <h2>Decisions worth a second look</h2>
-            @if (decisions is null)
-            {
-                <p class="loading">Simulating every shot in the match…</p>
-            }
-            else
-            {
-                <ul>
-                    @foreach (var d in decisions)
-                    {
-                        <li>
-                            <button type="button" aria-pressed="@Pressed(d.EventId == view?.Result.EventId)" disabled="@busy"
-                                    @onclick="() => SelectDecisionAsync(d)">
-                                <span class="clock">@d.MatchClock</span>
-                                <span class="who">@d.PlayerName</span>
-                                <span class="numbers">Shot @Pct(d.ActualValue), best option @Pct(d.BestAlternativeValue)</span>
-                            </button>
-                        </li>
-                    }
-                </ul>
-            }
-        </section>
     }
 </div>
 
 @code {
     private static readonly string[] Languages = ["English", "Spanish", "French", "Portuguese", "German", "Arabic", "Hindi", "Japanese"];
 
+    private sealed record QuickQuestion(string Label, Func<DecisionRanking?, string> Build, ViewerMode? Mode = null);
+
+    private static readonly QuickQuestion[] QuickQuestions =
+    [
+        new("Should he have passed?", d => d is null ? "Should he have passed?" : $"At {d.MatchClock}, should {d.PlayerName} have passed instead of shooting?"),
+        new("What was his best option?", d => d is null ? "What was the best option?" : $"At {d.MatchClock}, what was {d.PlayerName}'s best option?"),
+        new("Explain it like a pundit", d => d is null ? "Break this moment down." : $"Break down {d.PlayerName}'s decision at {d.MatchClock}.", ViewerMode.Expert)
+    ];
+
     private IReadOnlyList<MatchListItem> matches = [];
     private IReadOnlyList<DecisionRanking>? decisions;
-    private string[] Teams => matches.FirstOrDefault(m => m.MatchId == matchId) is { } m ? new[] { m.Home, m.Away } : Array.Empty<string>();
     private string homeTeam = "";
     private string awayTeam = "";
 
@@ -181,16 +228,15 @@
     private ViewerMode mode = ViewerMode.Fan;
     private string language = "English";
     private string favouriteTeam = "";
-    private string question = "Which shot should have been a pass?";
+    private string question = "";
 
     private MomentView? view;
     private DecisionRanking? selected;
     private WhatIfAnswer? answer;
+    private readonly List<AgentStep> liveSteps = [];
     private bool revealed;
     private bool busy;
     private string? error;
-
-    private bool IsEnglish => language == "English";
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,6 +252,7 @@
         var current = matches.First(m => m.MatchId == matchId);
         homeTeam = current.Home;
         awayTeam = current.Away;
+        favouriteTeam = "";
         decisions = null;
         view = null;
         answer = null;
@@ -223,34 +270,47 @@
     {
         selected = decision;
         answer = null;
+        error = null;
+        question = "";
         // Without the agents configured, show the engine's best alternative straight away.
         revealed = Service.AgentsUnavailableReason is not null;
-        error = null;
-        question = $"At {decision.MatchClock}, {decision.PlayerName} shot. What would a better decision have been?";
         view = await Service.PreviewAsync(matchId, decision.EventId);
     }
 
-    private async Task AskAsync()
+    private Task AskQuickAsync(QuickQuestion q)
+    {
+        if (q.Mode is { } m) mode = m;
+        return AskAsync(q.Build(selected), aboutSelected: true);
+    }
+
+    private Task AskTypedAsync() => AskAsync(question, aboutSelected: false);
+
+    private async Task AskAsync(string text, bool aboutSelected)
     {
         busy = true;
         error = null;
         answer = null;
         revealed = false;
+        liveSteps.Clear();
 
         try
         {
-            // If the question is about the selected moment, pass its event ID so the agents skip the search.
-            bool aboutSelected = selected is not null && question.Contains(selected.MatchClock);
+            // Typed questions about a different moment are left to the Moment Finder; otherwise use the selected moment.
+            string? eventId = aboutSelected || (selected is not null && text.Contains(selected.MatchClock)) ? selected?.EventId : null;
 
             var request = new WhatIfRequest(
-                Question: question,
+                Question: text,
                 MatchId: matchId,
                 Mode: mode,
                 Language: language,
                 FavouriteTeam: string.IsNullOrEmpty(favouriteTeam) ? null : favouriteTeam,
-                EventId: aboutSelected ? selected!.EventId : null);
+                EventId: eventId);
 
-            answer = await Service.AskAsync(request);
+            answer = await Service.AskAsync(request, step => InvokeAsync(() =>
+            {
+                liveSteps.Add(step);
+                StateHasChanged();
+            }));
 
             // Show the moment the agents actually chose, then draw the alternative.
             if (view is null || view.Result.EventId != answer.Moment.EventId)
@@ -271,6 +331,24 @@
         }
     }
 
+    // What the agents are doing now, inferred from the last finished step.
+    private (string Agent, string Action) Next => liveSteps.LastOrDefault() switch
+    {
+        null => ("Moment Finder", "finding the moment"),
+        { Agent: "Moment Finder" } => ("Simulator", "simulating every option"),
+        { Agent: "Simulator", Succeeded: false } => ("Moment Finder", "choosing another moment"),
+        { Agent: "Simulator" } => ("Explainer", "writing the answer"),
+        { Agent: "Explainer" } => ("Fact-Checker", "checking every number"),
+        { Agent: "Fact-Checker", Succeeded: false } => ("Explainer", "rewriting after the fact-check"),
+        { Agent: "Fact-Checker", Action: "verify translation" } => ("Studio", "finishing"),
+        { Agent: "Fact-Checker" } when language != "English" => ("Localiser", $"translating to {language}"),
+        { Agent: "Localiser" } => ("Fact-Checker", "checking the translation"),
+        _ => ("Studio", "finishing")
+    };
+
+    private string NextAgent => Next.Agent;
+    private string NextAction => Next.Action;
+
     private static string Outcome(WhatIfResult r) => r.ActualAction switch
     {
         "shot" => r.ActualOutcome switch
@@ -285,13 +363,27 @@
         _ => "carried the ball"
     };
 
+    // "Pass to Callum Garrow" -> "Pass to Garrow"; "Carry the ball towards goal, then shoot" -> "Carry and shoot"
+    private static string ShortOption(string description) =>
+        description.StartsWith("Pass to ") ? "Pass to " + Surname(description[8..])
+        : description.StartsWith("Carry") ? "Carry and shoot"
+        : description;
+
+    private static string Surname(string name) => name.Contains(' ') ? name[(name.LastIndexOf(' ') + 1)..] : name;
+
+    private string Share(double value, DecisionRanking d)
+    {
+        double max = Math.Max(decisions?.Max(x => x.BestAlternativeValue) ?? 0, 0.0001);
+        return (value / max * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+    }
+
     private static string LangCode(string language) => language switch
     {
         "Spanish" => "es", "French" => "fr", "Portuguese" => "pt", "German" => "de",
         "Arabic" => "ar", "Hindi" => "hi", "Japanese" => "ja", _ => "en"
     };
 
-    private static string Pct(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+    private static string Pct0(double v) => (v * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 
     // Blazor renders a bool true as an empty attribute, so aria-pressed needs explicit "true"/"false" strings.
     private static string Pressed(bool value) => value ? "true" : "false";
