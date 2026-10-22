@@ -288,6 +288,44 @@ $env:AZURE_OPENAI_DEPLOYMENT = "gpt-4.1-mini"
 dotnet run --project src/SecondGuess.Web
 ```
 
+## Live match feed
+
+The **Live** page (`/live`) replays a match as if it were happening now, at 10×, 30× or 60× speed, and turns
+each event into live intelligence with `LiveStatsEngine` (deterministic, in `SecondGuess.Simulation/Live`):
+
+| Feature | How it works |
+|---|---|
+| **Live stats** | Possession (by time on the ball), passes and accuracy, shots, shots on target, xG, tackles |
+| **Pass difficulty (0–100)** | The inverse of the pass success model: distance, pressure on the passer, defenders in the lane |
+| **Player tags** | A sprint card when a player passes 24 km/h for the first time at a new top speed |
+| **Ball and shot speed** | Every shot card shows the shot speed; quality-pass cards show the ball speed |
+| **Control vs Chaos (0–100)** | Over the last 5 minutes: turnovers per minute (50%), pressures per minute (30%) and failed passes (20%). Cards fire when the game tips into chaos or one side takes control |
+| **Momentum** | xG in the last 10 minutes; a card fires when one side clearly dominates |
+| **Second Guess, live** | Every shot is simulated as it happens; if another option was worth 5+ points more, a card says so and links to the studio |
+| **Milestones** | Chances created, 50 passes, half-time and full-time summaries |
+
+**Overlay cards** appear as broadcast lower-thirds and in the match feed. Each card is timed and
+machine-readable for a rendering partner:
+
+```
+GET /api/matches/{matchId}/overlays
+```
+
+```json
+{ "id": "card_0042", "matchClock": "44:44", "timestampMs": 2754000, "type": "second_guess",
+  "playerName": "Quin Abara", "headline": "Second Guess: a pass to Garrow was on",
+  "detail": "That option was worth 21%, against 4% for the shot.", "value": 0.206, "unit": "goal chance",
+  "displaySeconds": 8, "priority": 4, "sourceEventIds": ["evt_001168"] }
+```
+
+**Personalisation:** follow one player all match (highlighted on the pitch, with their own stat card and an
+option to show only their graphics), or track one number (shot speed, pass difficulty, top sprint speed,
+control vs chaos).
+
+**Recaps:** "Write a recap" asks the **Recapper** agent for a recap of the match so far, in Fan or Expert mode,
+any language and from your team's point of view. The Fact-Checker checks every number against the live stats
+it was written from, sends mistakes back for a rewrite, and checks the translation.
+
 ## Data schema
 
 **Coordinates:** metres on a 105 x 68 pitch, always from the perspective of the event's team,
@@ -315,11 +353,10 @@ which attacks towards x = 105 (goal centre at 105, 34).
 
 - [x] Synthetic match generator and replayer
 - [x] GitHub Copilot toolkit (agents, skills, slash commands) and CI
-- [ ] Stream events to Microsoft Fabric Real-Time Intelligence
 - [x] What-if simulation engine, exposed as an MCP server
 - [x] Unit tests
 - [x] Multi-agent what-if system (Microsoft Agent Framework, Microsoft Foundry, MCP)
 - [x] Deterministic fact-checking and multilingual answers
 - [x] Studio web app: telestrator pitch, Fan/Expert modes, languages, favourite team, agent trace
-- [ ] Live match feed with real-time stats and broadcast overlay cards
+- [x] Live match feed: real-time stats, pass difficulty, Control vs Chaos, overlay cards and API, player focus, recaps
 - [ ] Deployment to Azure Container Apps

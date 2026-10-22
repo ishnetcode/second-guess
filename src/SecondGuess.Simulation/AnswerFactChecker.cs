@@ -86,6 +86,47 @@ public static partial class AnswerFactChecker
         return new FactCheckReport(false, issues, report.NumbersChecked);
     }
 
+    /// <summary>
+    /// Checks every number in <paramref name="text"/> against the numbers in <paramref name="source"/> (for example the
+    /// live stats JSON a recap was written from). Fractions in the source also allow their percentage form (0.79 -> 79%).
+    /// </summary>
+    public static FactCheckReport CheckAgainstSource(string text, string source)
+    {
+        var allowed = new List<double>();
+        foreach (Match m in NumberPattern().Matches(DecimalComma().Replace(source, "$1.$2")))
+        {
+            double v = Parse(m.Value);
+            allowed.Add(v);
+            if (v <= 1) allowed.Add(v * 100);
+        }
+
+        string normalised = ClockPattern().Replace(EventIdPattern().Replace(DecimalComma().Replace(text, "$1.$2"), " "), " ");
+        var issues = new List<string>();
+        int count = 0;
+        foreach (Match m in NumberPattern().Matches(normalised))
+        {
+            count++;
+            double v = Parse(m.Value);
+            double tolerance = m.Value.Contains('.') && v < 10 ? 0.051 : 0.6;
+            // Ordinals and small counts ("2nd half", "3 shots") are allowed when they appear in the source too.
+            if (!allowed.Any(a => Math.Abs(a - v) <= tolerance))
+                issues.Add($"The number \"{m.Value}\" does not appear in the match data.");
+        }
+        return new FactCheckReport(issues.Count == 0, issues.Distinct().ToList(), count);
+    }
+
+    /// <summary>Checks a translated recap: every number must still match the source, and none may be dropped.</summary>
+    public static FactCheckReport CheckTranslationAgainstSource(string original, string translated, string source)
+    {
+        var report = CheckAgainstSource(translated, source);
+        var originalNumbers = ExtractNumbers(original);
+        var translatedNumbers = ExtractNumbers(translated);
+        var missing = originalNumbers.Where(n => !translatedNumbers.Any(t => Math.Abs(t - n) < 0.05)).Distinct().ToList();
+        if (missing.Count == 0) return report;
+        return new FactCheckReport(false, report.Issues.Concat(missing.Select(n =>
+            $"The translation is missing the number {n.ToString(CultureInfo.InvariantCulture)} from the original.")).ToList(), report.NumbersChecked);
+    }
+
     private static List<double> ExtractNumbers(string text)
     {
         string normalised = ClockPattern().Replace(EventIdPattern().Replace(DecimalComma().Replace(text, "$1.$2"), " "), " ");

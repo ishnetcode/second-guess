@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using SecondGuess.Agents;
 using SecondGuess.Simulation;
+using SecondGuess.Simulation.Live;
 
 namespace SecondGuess.Web.Services;
 
@@ -58,6 +59,39 @@ public sealed class SecondGuessService : IAsyncDisposable
         var match = _repository.Get(matchId);
         return new MomentView(MomentFinder.GetGameState(match, eventId), _engine.Simulate(match, eventId));
     });
+
+    /// <summary>The full match, for the live replay.</summary>
+    public LoadedMatch GetMatch(string matchId) => _repository.Get(matchId);
+
+    /// <summary>A fresh live engine for one viewer's replay (with live Second Guess checks on every shot).</summary>
+    public LiveStatsEngine CreateLiveEngine(string matchId) => new(_repository.Get(matchId), _engine);
+
+    /// <summary>Every overlay card for a match, timed and machine-readable, for the overlay API. Cached per match.</summary>
+    public IReadOnlyList<OverlayCard> GetOverlayCards(string matchId) =>
+        _overlays.GetOrAdd(matchId, id => LiveStatsEngine.BuildAllCards(_repository.Get(id), _engine));
+
+    private readonly ConcurrentDictionary<string, IReadOnlyList<OverlayCard>> _overlays = new();
+
+    /// <summary>Asks the Recapper agent for a fact-checked recap of the match so far.</summary>
+    public async Task<RecapAnswer> RecapAsync(RecapRequest request, Action<AgentStep>? onStep = null, CancellationToken cancellationToken = default)
+    {
+        await EnsureAgentsAsync(cancellationToken);
+        return await _orchestrator!.RecapAsync(request, cancellationToken, onStep);
+    }
+
+    private async Task EnsureAgentsAsync(CancellationToken cancellationToken)
+    {
+        if (_settings is null) throw new InvalidOperationException(AgentsUnavailableReason);
+        await _startGate.WaitAsync(cancellationToken);
+        try
+        {
+            _orchestrator ??= await WhatIfOrchestrator.CreateAsync(_settings, cancellationToken);
+        }
+        finally
+        {
+            _startGate.Release();
+        }
+    }
 
     /// <summary>Runs the full multi-agent pipeline.</summary>
     public async Task<WhatIfAnswer> AskAsync(WhatIfRequest request, Action<AgentStep>? onStep = null, CancellationToken cancellationToken = default)

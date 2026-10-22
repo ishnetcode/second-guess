@@ -1,0 +1,95 @@
+@using System.Globalization
+@using SecondGuess.Domain
+
+@*
+    The latest on-ball action during the live replay: all 22 players, the ball and the action.
+    Events are recorded from the acting team's perspective; here everything is shown from the home team's
+    perspective (home attacks right) so the picture doesn't flip every time possession changes.
+*@
+
+<figure class="pitch live-pitch" aria-label="@Summary">
+    <svg viewBox="-3 -2.5 111 73" role="img" xmlns="http://www.w3.org/2000/svg">
+        <title>@Summary</title>
+        <rect x="0" y="0" width="105" height="68" class="turf" />
+        @for (int i = 0; i < 12; i += 2)
+        {
+            <rect x="@F(i * 8.75)" y="0" width="8.75" height="68" class="stripe" />
+        }
+        <g class="lines">
+            <rect x="0" y="0" width="105" height="68" />
+            <line x1="52.5" y1="0" x2="52.5" y2="68" />
+            <circle cx="52.5" cy="34" r="9.15" />
+            <rect x="88.5" y="13.84" width="16.5" height="40.32" />
+            <rect x="99.5" y="24.84" width="5.5" height="18.32" />
+            <rect x="105" y="30.34" width="2" height="7.32" class="goal" />
+            <rect x="0" y="13.84" width="16.5" height="40.32" />
+            <rect x="0" y="24.84" width="5.5" height="18.32" />
+            <rect x="-2" y="30.34" width="2" height="7.32" class="goal" />
+        </g>
+
+        @if (Action is { X: double ax, Y: double ay } a)
+        {
+            var start = ToHome(ax, ay, a.TeamId);
+            @if (a.EndX is double ex && a.EndY is double ey)
+            {
+                var end = ToHome(ex, ey, a.TeamId);
+                <line x1="@F(start.X)" y1="@F(start.Y)" x2="@F(end.X)" y2="@F(end.Y)" class="@(a.Type == "shot" ? "live-shot" : "live-action")" />
+            }
+
+            @foreach (var p in a.FreezeFrame ?? Array.Empty<PlayerPosition>())
+            {
+                var pos = ToHome(p.X, p.Y, a.TeamId);
+                bool actor = p.PlayerId == a.PlayerId;
+                bool focus = p.PlayerId == FocusPlayerId;
+                <g class="player @(p.TeamId == HomeTeamId ? "home" : "away") @(actor ? "actor" : "")">
+                    <title>@Names.GetValueOrDefault(p.PlayerId, p.PlayerId)</title>
+                    <circle cx="@F(pos.X)" cy="@F(pos.Y)" r="1.25" />
+                    @if (focus)
+                    {
+                        <circle cx="@F(pos.X)" cy="@F(pos.Y)" r="2.4" class="focus-ring" />
+                    }
+                    @if (actor || focus)
+                    {
+                        @Label(pos.X, pos.Y - 2.2, Surname(Names.GetValueOrDefault(p.PlayerId, "")))
+                    }
+                </g>
+            }
+            <circle cx="@F(start.X)" cy="@F(start.Y)" r="0.65" class="ball" />
+        }
+    </svg>
+    <figcaption>
+        <span class="key">
+            <span class="home">@HomeTeamName attack right</span>
+            <span class="away">@AwayTeamName</span>
+            @if (FocusPlayerId is not null)
+            {
+                <span class="focus-key">Your player</span>
+            }
+        </span>
+    </figcaption>
+</figure>
+
+@code {
+    [Parameter] public MatchEvent? Action { get; set; }
+    [Parameter] public string HomeTeamId { get; set; } = "home";
+    [Parameter] public string HomeTeamName { get; set; } = "";
+    [Parameter] public string AwayTeamName { get; set; } = "";
+    [Parameter] public string? FocusPlayerId { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string> Names { get; set; } = new Dictionary<string, string>();
+
+    private string Summary => Action is null
+        ? "Waiting for kick-off"
+        : $"{Action.MatchClock}: {Names.GetValueOrDefault(Action.PlayerId ?? "", "")} {Action.Type} ({Action.Outcome})";
+
+    /// <summary>Converts from the acting team's perspective to the home team's (home attacks right).</summary>
+    private Point ToHome(double x, double y, string? actingTeam) =>
+        actingTeam == HomeTeamId ? new(x, y) : Pitch.Flip(new(x, y));
+
+    private static string Surname(string name) => name.Contains(' ') ? name[(name.LastIndexOf(' ') + 1)..] : name;
+
+    private static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+    // SVG <text> can't be written directly inside Razor code blocks, so it is emitted as markup.
+    private static MarkupString Label(double x, double y, string text) =>
+        new($"<text x=\"{F(x)}\" y=\"{F(y)}\" class=\"name\">{System.Net.WebUtility.HtmlEncode(text)}</text>");
+}

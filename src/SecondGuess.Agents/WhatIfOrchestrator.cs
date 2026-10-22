@@ -36,14 +36,16 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
     private readonly AIAgent _momentFinder;
     private readonly AIAgent _explainer;
     private readonly AIAgent _localiser;
+    private readonly AIAgent _recapper;
 
-    private WhatIfOrchestrator(AgentSettings settings, McpClient mcp, AIAgent momentFinder, AIAgent explainer, AIAgent localiser)
+    private WhatIfOrchestrator(AgentSettings settings, McpClient mcp, AIAgent momentFinder, AIAgent explainer, AIAgent localiser, AIAgent recapper)
     {
         _settings = settings;
         _mcp = mcp;
         _momentFinder = momentFinder;
         _explainer = explainer;
         _localiser = localiser;
+        _recapper = recapper;
     }
 
     /// <summary>Starts the MCP server, connects to the model in Microsoft Foundry and creates the agents.</summary>
@@ -79,8 +81,9 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         AIAgent momentFinder = chatClient.AsAIAgent(instructions: AgentInstructions.MomentFinder, name: "MomentFinder", tools: momentTools);
         AIAgent explainer = chatClient.AsAIAgent(instructions: AgentInstructions.Explainer, name: "Explainer");
         AIAgent localiser = chatClient.AsAIAgent(instructions: AgentInstructions.Localiser, name: "Localiser");
+        AIAgent recapper = chatClient.AsAIAgent(instructions: AgentInstructions.Recapper, name: "Recapper");
 
-        return new WhatIfOrchestrator(settings, mcp, momentFinder, explainer, localiser);
+        return new WhatIfOrchestrator(settings, mcp, momentFinder, explainer, localiser, recapper);
     }
 
     /// <summary>Answers a what-if question end to end. <paramref name="onStep"/> is called as each agent finishes.</summary>
@@ -243,6 +246,65 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         }
 
         session.FinalAnswer = translated;
+    }
+
+    // ------------------------------------------------------------ recaps
+
+    /// <summary>
+    /// Recapper writes a recap from live stats; the Fact-Checker checks every number against that data and sends
+    /// problems back; the Localiser translates and the Fact-Checker confirms the numbers survived.
+    /// </summary>
+    public async Task<RecapAnswer> RecapAsync(RecapRequest request, CancellationToken cancellationToken = default, Action<AgentStep>? onStep = null)
+    {
+        var session = new WhatIfSession(new WhatIfRequest("recap", request.MatchId, request.Mode, request.Language, request.FavouriteTeam), onStep);
+        string basePrompt = $"""
+            Viewer mode: {request.Mode}
+            Favourite team: {request.FavouriteTeam ?? "none"}
+            Focus player: {request.FocusPlayerName ?? "none"}
+            Match data (JSON):
+            {request.Context}
+            """;
+
+        string prompt = basePrompt;
+        string draft = "";
+        FactCheckReport report = new(false, ["No recap written."], 0);
+        int attempts = 0;
+
+        for (int attempt = 1; attempt <= MaxExplainerAttempts; attempt++)
+        {
+            attempts = attempt;
+            draft = (await RunStepAsync(session, "Recapper", attempt == 1 ? "write recap" : $"rewrite (attempt {attempt})",
+                () => RunAgentAsync(_recapper, prompt, cancellationToken))).Trim();
+
+            report = AnswerFactChecker.CheckAgainstSource(draft, request.Context);
+            session.AddStep(new AgentStep("Fact-Checker", "verify numbers against live stats",
+                report.Passed ? $"{report.NumbersChecked} numbers verified" : string.Join(" ", report.Issues), report.Passed, TimeSpan.Zero));
+            if (report.Passed) break;
+
+            prompt = $"""
+                {basePrompt}
+
+                Your previous recap:
+                {draft}
+
+                Fact-check feedback:
+                {report.ToFeedback()}
+                """;
+        }
+
+        string final = draft;
+        bool english = request.Language.Equals("English", StringComparison.OrdinalIgnoreCase) || request.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        if (!english)
+        {
+            string translatePrompt = $"Target language: {request.Language}\n\nText:\n{draft}";
+            final = (await RunStepAsync(session, "Localiser", $"translate to {request.Language}",
+                () => RunAgentAsync(_localiser, translatePrompt, cancellationToken))).Trim();
+            var translationReport = AnswerFactChecker.CheckTranslationAgainstSource(draft, final, request.Context);
+            session.AddStep(new AgentStep("Fact-Checker", "verify translation",
+                translationReport.Passed ? "numbers preserved" : string.Join(" ", translationReport.Issues), translationReport.Passed, TimeSpan.Zero));
+        }
+
+        return new RecapAnswer(final, draft, request.Language, report, attempts, session.Trace);
     }
 
     // ------------------------------------------------------------ helpers

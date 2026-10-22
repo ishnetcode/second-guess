@@ -1,0 +1,424 @@
+@page "/live"
+@rendermode InteractiveServer
+@implements IDisposable
+@using System.Globalization
+@using SecondGuess.Agents
+@using SecondGuess.Domain
+@using SecondGuess.Simulation
+@using SecondGuess.Simulation.Live
+@using SecondGuess.Web.Components.Live
+@using SecondGuess.Web.Components.Studio
+@using SecondGuess.Web.Services
+@inject SecondGuessService Service
+
+<PageTitle>Second Guess: live</PageTitle>
+
+<div class="studio live">
+    <header class="masthead">
+        <div class="brand">
+            <h1>Second Guess</h1>
+            <nav class="site-nav" aria-label="Pages">
+                <a href="/">Studio</a>
+                <a href="/live" aria-current="page">Live</a>
+            </nav>
+        </div>
+        @if (matches.Count > 0)
+        {
+            <label class="match-picker">
+                <span>Match</span>
+                <select @bind="matchId" @bind:after="LoadMatch">
+                    @foreach (var m in matches)
+                    {
+                        <option value="@m.MatchId">@m.Home v @m.Away</option>
+                    }
+                </select>
+            </label>
+        }
+    </header>
+
+    @if (session is null)
+    {
+        <section class="empty">
+            <h2>No matches yet</h2>
+            <pre>dotnet run --project src/SecondGuess.Generator -- generate --seed 100 --matches 5</pre>
+        </section>
+    }
+    else
+    {
+        var s = session.Snapshot;
+
+        @* Scoreboard and playback *@
+        <section class="scoreboard" aria-label="Score and playback">
+            <div class="score">
+                <span class="team home-name">@s.Home.Name</span>
+                <span class="goals">@s.Home.Goals–@s.Away.Goals</span>
+                <span class="team away-name">@s.Away.Name</span>
+                <span class="clock">@(s.Finished ? "Full-time" : s.MatchClock)</span>
+            </div>
+            <div class="playback">
+                <button type="button" class="play" @onclick="TogglePlay" disabled="@session.Finished">
+                    @(session.Playing ? "Pause" : session.Snapshot.TimestampMs == 0 ? "Kick off" : "Play")
+                </button>
+                <fieldset class="mode speed">
+                    <legend>Speed</legend>
+                    @foreach (var sp in Speeds)
+                    {
+                        <button type="button" aria-pressed="@Pressed(session.Speed == sp)" @onclick="() => session.Speed = sp">@(sp)×</button>
+                    }
+                </fieldset>
+                <label class="jump">
+                    Jump to
+                    <select @onchange="Jump">
+                        <option value="">minute…</option>
+                        @foreach (int m in JumpMinutes)
+                        {
+                            <option value="@m">@(m)'</option>
+                        }
+                    </select>
+                </label>
+            </div>
+        </section>
+
+        <main class="board">
+            <section class="stage" aria-label="Live action">
+                <div class="pitch-wrap">
+                    <LivePitch Action="session.LastAction" HomeTeamId="@session.Match.Info.Home.Id"
+                               HomeTeamName="@session.Match.Info.Home.Name" AwayTeamName="@session.Match.Info.Away.Name"
+                               FocusPlayerId="@NullIfEmpty(focusPlayerId)" Names="names" />
+
+                    @* The broadcast graphic currently on screen *@
+                    @if (OnScreen is { } card)
+                    {
+                        <div class="lower-third type-@card.Type" role="status" @key="card.Id">
+                            <span class="lt-clock">@card.MatchClock</span>
+                            <strong>@card.Headline</strong>
+                            <span>@card.Detail</span>
+                        </div>
+                    }
+                </div>
+
+                <section class="feed" aria-label="Match feed">
+                    <h3>
+                        Match feed
+                        @if (!string.IsNullOrEmpty(focusPlayerId) && onlyFocus)
+                        {
+                            <span class="feed-filter">showing @names.GetValueOrDefault(focusPlayerId) only</span>
+                        }
+                    </h3>
+                    @if (FeedCards.Count == 0)
+                    {
+                        <p class="placeholder">Press Kick off. Graphics appear here as the match unfolds: chances, quality passes, sprints, shifts in control and Second Guess checks on every shot.</p>
+                    }
+                    <ol class="feed-list">
+                        @foreach (var c in FeedCards)
+                        {
+                            <li class="type-@c.Type">
+                                <span class="feed-clock">@c.MatchClock</span>
+                                <div>
+                                    <strong>@c.Headline</strong>
+                                    <span>@c.Detail</span>
+                                    @if (c.Type == CardTypes.SecondGuess && c.SourceEventIds.Count > 0)
+                                    {
+                                        <a class="ask-why" href="/?match=@c.MatchId&event=@c.SourceEventIds[0]">Ask Second Guess why</a>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                    <p class="note">Every graphic is also available as timed JSON for broadcast overlays: <a href="/api/matches/@matchId/overlays" target="_blank">overlay feed</a>.</p>
+                </section>
+            </section>
+
+            <aside class="desk">
+                <section class="stats" aria-label="Match stats">
+                    <h2>The numbers</h2>
+                    <dl class="stat-table">
+                        @StatRow("Possession", $"{N0(s.Home.PossessionPct)}%", $"{N0(s.Away.PossessionPct)}%", s.Home.PossessionPct, s.Away.PossessionPct)
+                        @StatRow("Chances (xG)", N2(s.Home.Xg), N2(s.Away.Xg), s.Home.Xg, s.Away.Xg)
+                        @StatRow("Shots", $"{s.Home.Shots}", $"{s.Away.Shots}", s.Home.Shots, s.Away.Shots)
+                        @StatRow("On target", $"{s.Home.ShotsOnTarget}", $"{s.Away.ShotsOnTarget}", s.Home.ShotsOnTarget, s.Away.ShotsOnTarget)
+                        @StatRow("Passes", $"{s.Home.Passes}", $"{s.Away.Passes}", s.Home.Passes, s.Away.Passes)
+                        @StatRow("Pass accuracy", Pct(s.Home.PassAccuracy), Pct(s.Away.PassAccuracy), s.Home.PassAccuracy, s.Away.PassAccuracy)
+                        @StatRow("Tackles won", $"{s.Home.Tackles}", $"{s.Away.Tackles}", s.Home.Tackles, s.Away.Tackles)
+                    </dl>
+                </section>
+
+                <section class="rhythm-panel" aria-label="Control versus chaos">
+                    <h2>Control vs chaos <span class="rhythm-label label-@s.ChaosLabel.ToLowerInvariant()">@s.ChaosLabel</span></h2>
+                    <p class="sub">@s.ChaosExplanation</p>
+                    <RhythmChart Points="session.Engine.Rhythm" Current="s.Chaos" />
+                    <p class="sub">Chances in the last 10 minutes: @s.Home.Name @N2(s.HomeXgLast10), @s.Away.Name @N2(s.AwayXgLast10).</p>
+                </section>
+
+                <section class="focus" aria-label="Personalise">
+                    <h2>Make it yours</h2>
+                    <label>
+                        Follow a player
+                        <select @bind="focusPlayerId">
+                            <option value="">No one in particular</option>
+                            @foreach (var team in new[] { session.Match.Info.Home, session.Match.Info.Away })
+                            {
+                                <optgroup label="@team.Name">
+                                    @foreach (var p in team.Players)
+                                    {
+                                        <option value="@p.Id">@p.Name (@p.Position)</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                    </label>
+                    @if (FocusStats is { } fp)
+                    {
+                        <div class="player-card">
+                            <strong>@fp.Name</strong>
+                            <span>@fp.Touches touches · @fp.Passes passes (@Pct(fp.PassAccuracy)) · @fp.KeyPasses chances created</span>
+                            <span>@fp.Shots shots (@N2(fp.Xg) xG) · @fp.TacklesWon tackles won · top speed @N1(fp.TopSpeedKmh) km/h</span>
+                        </div>
+                        <label class="check">
+                            <input type="checkbox" @bind="onlyFocus" /> Only show graphics about this player
+                        </label>
+                    }
+
+                    <label>
+                        Track one number
+                        <select @bind="metric">
+                            @foreach (var m in Metrics)
+                            {
+                                <option value="@m">@m</option>
+                            }
+                        </select>
+                    </label>
+                    <div class="metric-tile">
+                        <span class="metric-value">@MetricNow</span>
+                        <span class="metric-sub">@MetricBest</span>
+                    </div>
+                </section>
+
+                <section class="recap" aria-label="Recap">
+                    <h2>Recap so far</h2>
+                    <div class="preferences">
+                        <label>
+                            In
+                            <select @bind="language" disabled="@recapBusy">
+                                @foreach (var lang in Languages)
+                                {
+                                    <option value="@lang">@lang</option>
+                                }
+                            </select>
+                        </label>
+                        <label>
+                            as
+                            <select @bind="favouriteTeam" disabled="@recapBusy">
+                                <option value="">a neutral fan</option>
+                                <option value="@session.Match.Info.Home.Name">a @session.Match.Info.Home.Name fan</option>
+                                <option value="@session.Match.Info.Away.Name">an @session.Match.Info.Away.Name fan</option>
+                            </select>
+                        </label>
+                        <fieldset class="mode" disabled="@recapBusy">
+                            <legend>Detail</legend>
+                            <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Fan)" @onclick="() => mode = ViewerMode.Fan">Quick take</button>
+                            <button type="button" aria-pressed="@Pressed(mode == ViewerMode.Expert)" @onclick="() => mode = ViewerMode.Expert">Full analysis</button>
+                        </fieldset>
+                    </div>
+                    <button type="button" class="ask-button" @onclick="RecapAsync"
+                            disabled="@(recapBusy || s.TimestampMs == 0 || Service.AgentsUnavailableReason is not null)">
+                        @(recapBusy ? "Writing the recap…" : "Write a recap")
+                    </button>
+                    @if (Service.AgentsUnavailableReason is { } reason)
+                    {
+                        <p class="hint">@reason</p>
+                    }
+                    @if (recapError is not null)
+                    {
+                        <p class="error" role="alert">@recapError</p>
+                    }
+                    @if (recap is not null)
+                    {
+                        <article class="answer">
+                            <p dir="auto">@recap.Recap</p>
+                            <footer class="@(recap.FactCheck.Passed ? "checked" : "unchecked")">
+                                <span>@(recap.FactCheck.Passed ? $"Fact-checked: {recap.FactCheck.NumbersChecked} numbers match the live stats" : "Some numbers could not be verified")</span>
+                                @if (recap.Attempts > 1)
+                                {
+                                    <span>Rewritten @Times(recap.Attempts - 1) after the fact-check</span>
+                                }
+                            </footer>
+                        </article>
+                        <AgentTrace Steps="recap.Trace" />
+                    }
+                </section>
+            </aside>
+        </main>
+    }
+</div>
+
+@code {
+    private static readonly double[] Speeds = [10, 30, 60];
+    private static readonly int[] JumpMinutes = [1, 15, 30, 45, 60, 75, 85];
+    private static readonly string[] Languages = ["English", "Spanish", "French", "Portuguese", "German", "Arabic", "Hindi", "Japanese"];
+    private static readonly string[] Metrics = ["Shot speed", "Pass difficulty", "Top sprint speed", "Control vs chaos"];
+
+    private IReadOnlyList<MatchListItem> matches = [];
+    private string matchId = "";
+    private LiveMatchSession? session;
+    private Dictionary<string, string> names = [];
+    private readonly Dictionary<string, DateTime> cardShownAt = [];
+
+    private string focusPlayerId = "";
+    private bool onlyFocus;
+    private string metric = "Shot speed";
+    private double? lastShotSpeed, maxShotSpeed;
+    private int? lastPassDifficulty, maxPassDifficulty;
+
+    private string language = "English";
+    private string favouriteTeam = "";
+    private ViewerMode mode = ViewerMode.Fan;
+    private RecapAnswer? recap;
+    private bool recapBusy;
+    private string? recapError;
+
+    protected override void OnInitialized()
+    {
+        matches = Service.ListMatches();
+        if (matches.Count == 0) return;
+        matchId = matches.Any(m => m.MatchId == "m_100") ? "m_100" : matches[0].MatchId;
+        LoadMatch();
+    }
+
+    private void LoadMatch()
+    {
+        if (session is not null)
+        {
+            session.Changed -= OnChanged;
+            session.Dispose();
+        }
+        session = new LiveMatchSession(Service, matchId);
+        session.Changed += OnChanged;
+        names = session.Match.Players.ToDictionary(p => p.Key, p => p.Value.Name);
+        cardShownAt.Clear();
+        focusPlayerId = "";
+        recap = null;
+        lastShotSpeed = maxShotSpeed = null;
+        lastPassDifficulty = maxPassDifficulty = null;
+    }
+
+    private void OnChanged(IReadOnlyList<OverlayCard> cards)
+    {
+        foreach (var c in cards) cardShownAt[c.Id] = DateTime.UtcNow;
+
+        if (session?.LastAction is { } a)
+        {
+            if (a.Type == EventTypes.Shot && a.BallSpeedKmh is double sp)
+            {
+                lastShotSpeed = sp;
+                maxShotSpeed = Math.Max(maxShotSpeed ?? 0, sp);
+            }
+            else if (a.Type == EventTypes.Pass)
+            {
+                int d = LiveStatsEngine.PassDifficulty(a);
+                lastPassDifficulty = d;
+                if (a.Outcome == "complete") maxPassDifficulty = Math.Max(maxPassDifficulty ?? 0, d);
+            }
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void TogglePlay()
+    {
+        if (session is null) return;
+        if (session.Playing) session.Pause(); else session.Play();
+    }
+
+    private void Jump(ChangeEventArgs e)
+    {
+        if (session is null || !int.TryParse(e.Value?.ToString(), out int minute)) return;
+        cardShownAt.Clear();
+        session.JumpTo(minute);
+    }
+
+    private async Task RecapAsync()
+    {
+        if (session is null) return;
+        recapBusy = true;
+        recapError = null;
+        recap = null;
+        try
+        {
+            string? focus = string.IsNullOrEmpty(focusPlayerId) ? null : focusPlayerId;
+            var request = new RecapRequest(
+                MatchId: matchId,
+                Context: RecapContext.Build(session.Snapshot, session.Engine.Cards, focus),
+                Mode: mode,
+                Language: language,
+                FavouriteTeam: string.IsNullOrEmpty(favouriteTeam) ? null : favouriteTeam,
+                FocusPlayerName: focus is null ? null : names.GetValueOrDefault(focus));
+            recap = await Service.RecapAsync(request);
+        }
+        catch (Exception ex)
+        {
+            recapError = $"The recap could not be written: {ex.Message}";
+        }
+        finally
+        {
+            recapBusy = false;
+        }
+    }
+
+    /// <summary>The broadcast graphic on screen: the newest card still within its display time.</summary>
+    private OverlayCard? OnScreen => session?.Engine.Cards
+        .Where(c => cardShownAt.TryGetValue(c.Id, out var at) && (DateTime.UtcNow - at).TotalSeconds < c.DisplaySeconds)
+        .Where(c => !onlyFocus || string.IsNullOrEmpty(focusPlayerId) || c.PlayerId == focusPlayerId)
+        .OrderByDescending(c => c.Priority).ThenByDescending(c => c.TimestampMs)
+        .FirstOrDefault();
+
+    private IReadOnlyList<OverlayCard> FeedCards => session is null ? [] : session.Engine.Cards
+        .Where(c => !onlyFocus || string.IsNullOrEmpty(focusPlayerId) || c.PlayerId == focusPlayerId)
+        .Reverse()
+        .Take(40)
+        .ToList();
+
+    private PlayerLiveStats? FocusStats => session?.Snapshot.Players.FirstOrDefault(p => p.PlayerId == focusPlayerId);
+
+    private string MetricNow => metric switch
+    {
+        "Shot speed" => lastShotSpeed is double v ? $"{N1(v)} km/h" : "No shots yet",
+        "Pass difficulty" => lastPassDifficulty is int d ? $"{d}/100" : "No passes yet",
+        "Top sprint speed" => session?.Snapshot.Players.Max(p => p.TopSpeedKmh) is double t && t > 0 ? $"{N1(t)} km/h" : "No sprints yet",
+        _ => session is null ? "" : $"{N0(session.Snapshot.Chaos)}/100"
+    };
+
+    private string MetricBest => metric switch
+    {
+        "Shot speed" => maxShotSpeed is double v ? $"Latest shot. Fastest so far: {N1(v)} km/h" : "",
+        "Pass difficulty" => maxPassDifficulty is int d ? $"Latest pass. Hardest completed so far: {d}/100" : "",
+        "Top sprint speed" => session?.Snapshot.Players.OrderByDescending(p => p.TopSpeedKmh).FirstOrDefault() is { TopSpeedKmh: > 0 } p ? $"Fastest so far: {p.Name}" : "",
+        _ => session is null ? "" : $"{session.Snapshot.ChaosLabel}. 0 is total control, 100 is total chaos."
+    };
+
+    private RenderFragment StatRow(string label, string home, string away, double homeValue, double awayValue) => __builder =>
+    {
+        double total = homeValue + awayValue;
+        string share = (total <= 0 ? 50 : homeValue / total * 100).ToString("0.#", CultureInfo.InvariantCulture);
+        <div class="stat-row">
+            <dt>@label</dt>
+            <dd class="home-value">@home</dd>
+            <dd class="bar" aria-hidden="true"><span style="width:@(share)%"></span></dd>
+            <dd class="away-value">@away</dd>
+        </div>
+    };
+
+    private static string? NullIfEmpty(string s) => string.IsNullOrEmpty(s) ? null : s;
+    private static string Times(int n) => n switch { 1 => "once", 2 => "twice", _ => $"{n} times" };
+    private static string Pct(double v) => (v * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+    private static string N0(double v) => v.ToString("0", CultureInfo.InvariantCulture);
+    private static string N1(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);
+    private static string N2(double v) => v.ToString("0.00", CultureInfo.InvariantCulture);
+    private static string Pressed(bool value) => value ? "true" : "false";
+
+    public void Dispose()
+    {
+        if (session is null) return;
+        session.Changed -= OnChanged;
+        session.Dispose();
+    }
+}

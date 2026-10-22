@@ -85,3 +85,21 @@ public sealed record AgentSettings(
         ApiKey: Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY"),
         DefaultMatchId: defaultMatchId ?? "m_100");
 }
+
+/// <summary>A request for a match recap written from live stats (<see cref="Context"/> is the data JSON).</summary>
+public sealed record RecapRequest(
+    string MatchId,
+    string Context,
+    ViewerMode Mode = ViewerMode.Fan,
+    string Language = "English",
+    string? FavouriteTeam = null,
+    string? FocusPlayerName = null);
+
+/// <summary>A fact-checked recap.</summary>
+public sealed record RecapAnswer(
+    string Recap,
+    string EnglishRecap,
+    string Language,
+    FactCheckReport FactCheck,
+    int Attempts,
+    IReadOnlyList<AgentStep> Trace);

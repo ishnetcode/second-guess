@@ -1,0 +1,36 @@
+@using System.Globalization
+@using SecondGuess.Simulation.Live
+
+@* Control vs Chaos over the match so far: low = one side controls the ball, high = it keeps changing hands. *@
+
+<figure class="rhythm" aria-label="Control versus chaos over time, currently @Current">
+    <div class="rhythm-plot">
+        <span class="axis-top">Chaos</span>
+        <span class="axis-bottom">Control</span>
+    <svg viewBox="0 0 100 40" preserveAspectRatio="none" role="img">
+        <rect x="0" y="0" width="100" height="@F(40 - 40 * 68 / 100.0)" class="band-chaos" />
+        <rect x="0" y="@F(40 - 40 * 45 / 100.0)" width="100" height="@F(40 * 45 / 100.0)" class="band-control" />
+        <line x1="@F(45 / 96.0 * 100)" y1="0" x2="@F(45 / 96.0 * 100)" y2="40" class="half-line" vector-effect="non-scaling-stroke" />
+        @if (Points.Count > 1)
+        {
+            <polyline points="@Line" class="rhythm-line" vector-effect="non-scaling-stroke" />
+        }
+    </svg>
+    </div>
+    <figcaption>
+        <span>0'</span>
+        <span>45'</span>
+        <span>90'</span>
+    </figcaption>
+</figure>
+
+@code {
+    [Parameter] public IReadOnlyList<RhythmPoint> Points { get; set; } = [];
+    [Parameter] public double Current { get; set; }
+
+    // x spans 0-100 over about 96 minutes of match time; y: chaos 100 at the top.
+    private string Line => string.Join(" ", Points.Select(p =>
+        $"{F(Math.Min(p.TimestampMs / (96 * 60_000.0) * 100, 100))},{F(40 - 40 * p.Chaos / 100)}"));
+
+    private static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+}

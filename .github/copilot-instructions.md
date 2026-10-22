@@ -13,12 +13,14 @@ explains the difference in plain language and fact-checks every number.
 - `src/SecondGuess.Agents`: multi-agent system (Microsoft Agent Framework): Moment Finder, Simulator, Explainer,
   Fact-Checker (`AnswerFactChecker`, deterministic) and Localiser, coordinated by `WhatIfOrchestrator`
 - `src/SecondGuess.Agents.Cli`: command-line client for the agents
-- `src/SecondGuess.Web`: Blazor Server studio app (`Components/Pages/Home.razor`, `Components/Studio/*`, `wwwroot/app.css`).
+- `src/SecondGuess.Simulation/Live`: `LiveStatsEngine` (live stats, pass difficulty, Control vs Chaos, overlay cards),
+  `RecapContext` (data for recaps). Overlay cards are served at `GET /api/matches/{matchId}/overlays`.
+- `src/SecondGuess.Web`: Blazor Server app with the studio (`/`) and live replay (`/live`) pages (`Components/Pages/Home.razor`, `Components/Studio/*`, `wwwroot/app.css`).
   Design: floodlit night-match telestrator; marker yellow (`--marker`) is reserved for the best alternative.
 - `tests/SecondGuess.Tests`: xUnit tests; run `dotnet test SecondGuess.slnx`
 - Models: Azure OpenAI in Microsoft Foundry, configured with AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT
   (sign-in with `az login`, never commit keys)
-- Planned: live event streaming (Fabric or Event Hubs), overlay cards, Azure Container Apps
+- Planned: Azure Container Apps deployment; optional Azure Event Hubs publishing of the live feed
 
 ## Build and run
 ```bash
