@@ -217,7 +217,7 @@
     [
         new("Should he have passed?", d => d is null ? "Should he have passed?" : $"At {d.MatchClock}, should {d.PlayerName} have passed instead of shooting?"),
         new("What was his best option?", d => d is null ? "What was the best option?" : $"At {d.MatchClock}, what was {d.PlayerName}'s best option?"),
-        new("Explain it like a pundit", d => d is null ? "Break this moment down." : $"Break down {d.PlayerName}'s decision at {d.MatchClock}.", ViewerMode.Expert)
+        new("Give me the expert view", d => d is null ? "Break this moment down." : $"Break down {d.PlayerName}'s decision at {d.MatchClock}.", ViewerMode.Expert)
     ];
 
     private IReadOnlyList<MatchListItem> matches = [];
