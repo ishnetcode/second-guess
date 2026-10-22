@@ -2,13 +2,14 @@
 @using SecondGuess.Simulation
 
 @*
-    The attacking half of the pitch at the frozen moment, drawn like a broadcast telestrator.
+    The whole pitch at the frozen moment, landscape like a broadcast tactical camera, drawn like a broadcast telestrator.
     Coordinates are metres from the acting team's perspective (attacking towards x = 105).
-    The decision actually taken is a thin blue line; the best alternative is drawn in marker yellow.
+    The decision actually taken is a dashed blue line. After an answer, the option being discussed is drawn:
+    marker yellow if it was better than what happened, chalk white if it was worse.
 *@
 
 <figure class="pitch" aria-label="@Summary">
-    <svg viewBox="44 -3 66 74" role="img" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="-3 -2.5 111 73" role="img" xmlns="http://www.w3.org/2000/svg">
         <title>@Summary</title>
 
         @* Turf with mowing stripes *@
@@ -21,16 +22,24 @@
             }
         }
 
-        @* Markings: halfway line, centre circle, penalty area, six-yard box, spot, arc, goal *@
+        @* Markings for both halves: touchlines, halfway line, centre circle, penalty areas, six-yard boxes, spots, arcs, goals *@
         <g class="lines">
             <rect x="0" y="0" width="105" height="68" />
             <line x1="52.5" y1="0" x2="52.5" y2="68" />
             <circle cx="52.5" cy="34" r="9.15" />
+            <circle cx="52.5" cy="34" r="0.3" class="spot" />
+
             <rect x="88.5" y="13.84" width="16.5" height="40.32" />
             <rect x="99.5" y="24.84" width="5.5" height="18.32" />
             <circle cx="94" cy="34" r="0.3" class="spot" />
             <path d="M 88.5 26.69 A 9.15 9.15 0 0 0 88.5 41.31" />
             <rect x="105" y="30.34" width="2" height="7.32" class="goal" />
+
+            <rect x="0" y="13.84" width="16.5" height="40.32" />
+            <rect x="0" y="24.84" width="5.5" height="18.32" />
+            <circle cx="11" cy="34" r="0.3" class="spot" />
+            <path d="M 16.5 26.69 A 9.15 9.15 0 0 1 16.5 41.31" />
+            <rect x="-2" y="30.34" width="2" height="7.32" class="goal" />
         </g>
 
         @if (State is not null && Result is not null)
@@ -57,21 +66,22 @@
                 <line x1="@F(ball.X)" y1="@F(ball.Y)" x2="@F(actualTarget.X)" y2="@F(actualTarget.Y)" class="actual" />
             }
 
-            @* The best alternative, drawn when an answer arrives *@
-            @if (Result.BestAlternative is { } best && ShowAlternative)
+            @* The option being discussed, drawn when an answer arrives *@
+            @if (Drawn is { } drawn)
             {
-                @if (best.Kind == "pass" && FindPlayer(best.TargetPlayerName) is { } receiver)
+                string tone = DrawnIsBetter ? "marker" : "marker worse";
+                @if (drawn.Kind == "pass" && FindPlayer(drawn.TargetPlayerName) is { } receiver)
                 {
-                    <path @key="@($"{Result.EventId}-pass")" class="marker"
+                    <path @key="@($"{Result.EventId}-{drawn.Key}-pass")" class="@tone"
                           d="M @F(ball.X) @F(ball.Y) L @F(receiver.X) @F(receiver.Y)" pathLength="1" />
-                    <path @key="@($"{Result.EventId}-finish")" class="marker finish"
+                    <path @key="@($"{Result.EventId}-{drawn.Key}-finish")" class="@tone finish"
                           d="M @F(receiver.X) @F(receiver.Y) L 105 34" pathLength="1" />
-                    <circle cx="@F(receiver.X)" cy="@F(receiver.Y)" r="2.6" class="ring" />
+                    <circle cx="@F(receiver.X)" cy="@F(receiver.Y)" r="2.6" class="ring @(DrawnIsBetter ? "" : "worse")" />
                 }
-                else if (best.Kind == "carry")
+                else if (drawn.Kind == "carry")
                 {
                     var end = CarryEnd(ball);
-                    <path @key="@($"{Result.EventId}-carry")" class="marker"
+                    <path @key="@($"{Result.EventId}-{drawn.Key}-carry")" class="@tone"
                           d="M @F(ball.X) @F(ball.Y) L @F(end.X) @F(end.Y)" pathLength="1" />
                 }
             }
@@ -80,7 +90,7 @@
             @foreach (var p in State.Players)
             {
                 bool isActor = p.Name == Result.PlayerName;
-                bool isTarget = Result.BestAlternative?.TargetPlayerName == p.Name;
+                bool isTarget = Drawn?.TargetPlayerName == p.Name;
                 <g class="player @TeamClass(p.TeamName) @(isActor ? "actor" : "")">
                     <title>@PlayerTooltip(p, isActor, isTarget)</title>
                     <circle cx="@F(p.X)" cy="@F(p.Y)" r="1.25" />
@@ -99,17 +109,21 @@
     {
         <figcaption>
             <span class="tag actual-tag">@ActionLabel(Result.Actual) <strong>@Pct(Result.Actual.MeanValue)</strong></span>
-            @if (Result.BestAlternative is { } b && ShowAlternative)
+            @if (Drawn is { } d)
             {
-                <span class="tag best-tag">@ActionLabel(b) <strong>@Pct(b.MeanValue)</strong></span>
+                <span class="tag @(DrawnIsBetter ? "best-tag" : "worse-tag")">@ActionLabel(d) <strong>@Pct(d.MeanValue)</strong></span>
+            }
+            @if (ShowAlternative && RightCall && (Drawn is null || !DrawnIsBetter))
+            {
+                <span class="tag right-call-tag">The right call</span>
             }
             <span class="key">
                 <span class="home">@HomeTeamName</span>
                 <span class="away">@AwayTeamName</span>
                 <span class="line-actual">What happened</span>
-                @if (ShowAlternative)
+                @if (Drawn is not null)
                 {
-                    <span class="line-best">Better option</span>
+                    <span class="@(DrawnIsBetter ? "line-best" : "line-worse")">@(DrawnIsBetter ? "Better option" : "Worse option")</span>
                 }
             </span>
         </figcaption>
@@ -123,15 +137,38 @@
     /// <summary>The alternative is drawn only once the agents have answered, so the reveal lands with the answer.</summary>
     [Parameter] public bool ShowAlternative { get; set; }
 
+    /// <summary>The option the viewer's question was about, if it named one. Otherwise the best alternative is drawn.</summary>
+    [Parameter] public string? FocusKey { get; set; }
+
     [Parameter] public string HomeTeamName { get; set; } = "";
     [Parameter] public string AwayTeamName { get; set; } = "";
 
     private readonly record struct Point2(double X, double Y);
 
+    /// <summary>True when nothing would have been better than what the player did.</summary>
+    private bool RightCall => Result is not null && OptionFocus.ActualWasBest(Result);
+
+    /// <summary>
+    /// The option to draw: the one the question asked about, otherwise the best alternative,
+    /// but never a "better option" when the player already made the right call.
+    /// </summary>
+    private OptionResult? Drawn
+    {
+        get
+        {
+            if (!ShowAlternative || Result is null) return null;
+            if (FocusKey is not null && Result.Options.FirstOrDefault(o => o.Key == FocusKey && !o.IsActual) is { } focus) return focus;
+            return RightCall ? null : Result.BestAlternative;
+        }
+    }
+
+    private bool DrawnIsBetter => Drawn is { } d && Result is not null && d.MeanValue > Result.Actual.MeanValue;
+
     private string Summary => Result is null
         ? "Football pitch"
         : $"{Result.PlayerName} at {Result.MatchClock}: {ActionLabel(Result.Actual)} {Pct(Result.Actual.MeanValue)}" +
-          (Result.BestAlternative is { } b && ShowAlternative ? $"; best alternative {ActionLabel(b)} {Pct(b.MeanValue)}" : "");
+          (Drawn is { } d ? $"; {(DrawnIsBetter ? "better" : "worse")} option {ActionLabel(d)} {Pct(d.MeanValue)}" : "") +
+          (ShowAlternative && RightCall && !DrawnIsBetter ? "; the right call" : "");
 
     private PlayerSnapshot? FindPlayer(string? name) =>
         name is null ? null : State?.Players.FirstOrDefault(p => p.Name == name);
@@ -189,7 +226,8 @@
         string who = $"{p.Name} ({p.Position}), {p.TeamName}";
         if (isActor) return $"{who}: on the ball, {Outcome()}";
         string distance = $"{F(p.DistanceToBallMetres)} m from the ball";
-        return isTarget && ShowAlternative ? $"{who}: best pass option, {distance}" : $"{who}: {distance}";
+        if (!isTarget || Drawn is null) return $"{who}: {distance}";
+        return DrawnIsBetter ? $"{who}: better pass option, {distance}" : $"{who}: pass option (worse than what happened), {distance}";
     }
 
     private string Outcome() => Result?.ActualAction switch

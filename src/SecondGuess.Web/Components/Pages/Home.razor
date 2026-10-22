@@ -86,14 +86,15 @@
                         <span class="who">@view.Result.PlayerName, @view.Result.TeamName</span>
                         <span class="what">@Outcome(view.Result)</span>
                     </div>
-                    <p class="how-to-read">Each dot is a player where they stood at that moment. Blue shows what happened. Yellow shows the better option, once you ask.</p>
+                    <p class="how-to-read">Each dot is a player where they stood at that moment. Blue shows what happened. Once you ask, yellow shows a better option.</p>
                 }
 
-                <Pitch State="view?.State" Result="view?.Result" ShowAlternative="@revealed" HomeTeamName="@homeTeam" AwayTeamName="@awayTeam" />
+                <Pitch State="view?.State" Result="view?.Result" ShowAlternative="@revealed" FocusKey="@answer?.FocusOptionKey"
+                       HomeTeamName="@homeTeam" AwayTeamName="@awayTeam" />
 
                 @if (view is not null)
                 {
-                    <OptionsChart Result="view.Result" ShowBest="@revealed" />
+                    <OptionsChart Result="view.Result" ShowBest="@revealed" FocusKey="@answer?.FocusOptionKey" />
                 }
             </section>
 
@@ -190,7 +191,7 @@
                                 }
                                 @if (answer.ExplainerAttempts > 1)
                                 {
-                                    <span>Rewritten @(answer.ExplainerAttempts - 1) time(s) after the fact-check</span>
+                                    <span>Rewritten @Times(answer.ExplainerAttempts - 1) after the fact-check</span>
                                 }
                             </footer>
                         </article>
@@ -382,6 +383,8 @@
         "Spanish" => "es", "French" => "fr", "Portuguese" => "pt", "German" => "de",
         "Arabic" => "ar", "Hindi" => "hi", "Japanese" => "ja", _ => "en"
     };
+
+    private static string Times(int n) => n switch { 1 => "once", 2 => "twice", _ => $"{n} times" };
 
     private static string Pct0(double v) => (v * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 

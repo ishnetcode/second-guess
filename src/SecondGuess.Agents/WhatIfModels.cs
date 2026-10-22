@@ -36,7 +36,8 @@ public sealed record WhatIfAnswer(
     WhatIfResult Simulation,
     FactCheckReport FactCheck,
     int ExplainerAttempts,
-    IReadOnlyList<AgentStep> Trace);
+    IReadOnlyList<AgentStep> Trace,
+    string? FocusOptionKey = null);   // the option the question asked about, if it named one
 
 /// <summary>
 /// Shared state passed between the agents. Each agent reads what earlier agents produced and adds its

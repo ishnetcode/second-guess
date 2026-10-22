@@ -9,16 +9,18 @@
     <ul>
         @foreach (var o in Result.Options)
         {
-            bool isBest = Result.BestAlternative?.Key == o.Key;
-            <li class="@(o.IsActual ? "is-actual" : "") @(isBest && ShowBest ? "is-best" : "")">
+            bool isBest = ShowBest && (RightCall ? o.IsActual : Result.BestAlternative?.Key == o.Key);
+            bool isFocus = ShowBest && FocusKey == o.Key && !o.IsActual;
+            <li class="@(o.IsActual ? "is-actual" : "") @(isBest && !o.IsActual ? "is-best" : "") @(isFocus ? "is-focus" : "")">
                 <span class="label">
                     @o.Description
                     @if (o.IsActual) { <em>what he did</em> }
-                    @if (isBest && ShowBest) { <em>best</em> }
+                    @if (isBest) { <em class="best-label">best</em> }
+                    @if (isFocus) { <em>you asked</em> }
                 </span>
                 <span class="bar" aria-hidden="true"><span style="width:@Width(o.MeanValue)"></span></span>
                 <span class="value">@Pct(o.MeanValue)</span>
-                <span class="range" title="In 8 out of 10 simulations the value fell in this range">likely @Pct0(o.P10)–@Pct0(o.P90)</span>
+                <span class="range" title="In 8 out of 10 simulations the value fell in this range">@Likely(o)</span>
             </li>
         }
     </ul>
@@ -28,10 +30,16 @@
 @code {
     [Parameter, EditorRequired] public WhatIfResult Result { get; set; } = default!;
     [Parameter] public bool ShowBest { get; set; }
+    [Parameter] public string? FocusKey { get; set; }
+
+    private bool RightCall => OptionFocus.ActualWasBest(Result);
 
     private double Max => Math.Max(Result.Options.Max(o => o.MeanValue), 0.0001);
 
     private string Width(double v) => (v / Max * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    private static string Likely(OptionResult o) =>
+        o.P90 < 0.01 ? "likely under 1%" : $"likely {Pct0(o.P10)}–{Pct0(o.P90)}";
 
     private static string Pct0(double v) => (v * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 

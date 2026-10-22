@@ -101,7 +101,8 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
             Simulation: session.Simulation!,
             FactCheck: session.FactCheck!,
             ExplainerAttempts: session.ExplainerAttempts,
-            Trace: session.Trace);
+            Trace: session.Trace,
+            FocusOptionKey: OptionFocus.Resolve(request.Question, session.Simulation!)?.Key);
     }
 
     // ------------------------------------------------------------ agents 1 + 2
@@ -168,10 +169,14 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
     private async Task ExplainWithFactCheckAsync(WhatIfSession session, CancellationToken ct)
     {
         var request = session.Request;
+        var focus = OptionFocus.Resolve(request.Question, session.Simulation!);
+        bool actualWasBest = OptionFocus.ActualWasBest(session.Simulation!);
         string basePrompt = $"""
             Viewer question: {request.Question}
             Viewer mode: {request.Mode}
             Favourite team: {request.FavouriteTeam ?? "none"}
+            Option the viewer asked about: {(focus is null ? "none named" : $"{focus.Description} (key {focus.Key})")}
+            Was the actual decision already the best option: {(actualWasBest ? "yes" : "no")}
             Simulation result (JSON):
             {session.SimulationJson}
             """;
@@ -194,7 +199,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
             }
             session.FactCheck = report;
             session.AddStep(new AgentStep("Fact-Checker", request.Mode == ViewerMode.Fan ? "verify numbers and length" : "verify numbers",
-                report.Passed ? $"{report.NumbersChecked} numbers verified" : string.Join("; ", report.Issues),
+                report.Passed ? $"{report.NumbersChecked} numbers verified" : string.Join(" ", report.Issues),
                 report.Passed, stopwatch.Elapsed));
 
             if (report.Passed) return;
@@ -233,7 +238,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
 
             var report = AnswerFactChecker.CheckTranslation(session.Draft!, translated, session.Simulation!);
             session.AddStep(new AgentStep("Fact-Checker", "verify translation",
-                report.Passed ? "numbers preserved" : string.Join("; ", report.Issues), report.Passed, TimeSpan.Zero));
+                report.Passed ? "numbers preserved" : string.Join(" ", report.Issues), report.Passed, TimeSpan.Zero));
             if (report.Passed) break;
         }
 

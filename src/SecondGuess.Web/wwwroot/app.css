@@ -296,9 +296,9 @@ select {
 
 .pitch svg {
     display: block;
+    /* Whole pitch, landscape: fills the column and stays about two-thirds as tall as it is wide. */
     width: 100%;
     height: auto;
-    max-height: min(62vh, 620px);
     border-radius: var(--radius);
     background: var(--turf);
 }
@@ -365,6 +365,10 @@ select {
     opacity: 0;
     animation: appear 250ms ease-out 600ms forwards;
 }
+
+/* An option the viewer asked about that was worse than what happened: chalk, not marker yellow. */
+.pitch .marker.worse { stroke: var(--chalk); stroke-opacity: 0.85; }
+.pitch .ring.worse { stroke: var(--chalk); }
 
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes appear { to { opacity: 1; } }
@@ -446,7 +450,8 @@ select {
 .key .away::before { background: var(--away); }
 
 .key .line-actual::before,
-.key .line-best::before {
+.key .line-best::before,
+.key .line-worse::before {
     width: 18px;
     height: 0;
     border-radius: 0;
@@ -455,7 +460,10 @@ select {
 
 .key .line-actual::before { border-top: 2px dashed var(--actual); }
 .key .line-best::before { border-top: 4px solid var(--marker); }
+.key .line-worse::before { border-top: 4px solid var(--chalk); }
 .best-tag { border-color: var(--marker); }
+.worse-tag { border-color: var(--chalk); }
+.right-call-tag { border-color: var(--home); }
 
 /* ---------------------------------------------------------------- options chart */
 
@@ -515,6 +523,10 @@ select {
 .options .is-actual .bar span { background: var(--actual); }
 .options .is-best .bar span { background: var(--marker); }
 .options .is-best .label em { color: var(--marker); }
+.options .is-actual .best-label { color: var(--home); }
+.options .is-focus .bar span { background: var(--chalk); }
+.options .is-focus .label em { color: var(--chalk); }
+.options .is-best.is-focus .bar span { background: var(--marker); }
 
 .options .value {
     font-family: var(--display);

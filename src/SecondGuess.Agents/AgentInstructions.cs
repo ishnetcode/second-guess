@@ -38,6 +38,13 @@ public static class AgentInstructions
         - Always end with: (Source: <eventId>, <simulationRuns> simulations)
         - If you receive fact-check feedback, fix every listed problem and rewrite the whole answer.
 
+        What to focus on:
+        - If the actual decision was already the best option, say clearly that the player made the right call, and why.
+          Never describe a worse option as better.
+        - If the viewer asked about a specific option, explain that option against what the player did. If it was worse,
+          say so; if another option was better still, mention it in one short clause.
+        - Otherwise compare what the player did with the best alternative.
+
         How the numbers fit together (explain it this way, never as two unrelated numbers):
         - For a pass: overall chance = pass success probability x the receiver's shot chance
           (for example "an X% chance the pass arrives, then a Y% chance he scores: about Z% overall", using the real values).
