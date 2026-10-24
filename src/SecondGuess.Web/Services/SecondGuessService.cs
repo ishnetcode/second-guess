@@ -37,7 +37,8 @@ public sealed class SecondGuessService : IAsyncDisposable
                 Deployment: configuration["AZURE_OPENAI_DEPLOYMENT"] ?? "gpt-4.1-mini",
                 DataRoot: dataRoot,
                 McpServerProject: configuration["SecondGuess:McpServerProject"] ?? Path.Combine(repoRoot, "src", "SecondGuess.McpServer"),
-                ApiKey: configuration["AZURE_OPENAI_API_KEY"]);
+                ApiKey: configuration["AZURE_OPENAI_API_KEY"],
+                McpServerDll: configuration["SecondGuess:McpServerDll"]);
         }
     }
 

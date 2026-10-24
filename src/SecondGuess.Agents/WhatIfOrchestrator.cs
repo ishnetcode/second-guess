@@ -53,7 +53,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
     {
         // 1. Connect to the Second Guess MCP server (the simulation engine) over stdio.
         //    Use the built server DLL when available, so build output can't interfere with the stdio protocol.
-        string serverDll = Path.Combine(settings.McpServerProject, "bin", "Debug", "net10.0", "SecondGuess.McpServer.dll");
+        string serverDll = settings.McpServerDll ?? Path.Combine(settings.McpServerProject, "bin", "Debug", "net10.0", "SecondGuess.McpServer.dll");
         string[] arguments = File.Exists(serverDll)
             ? new[] { serverDll, "--data", settings.DataRoot }
             : new[] { "run", "--project", settings.McpServerProject, "--", "--data", settings.DataRoot };

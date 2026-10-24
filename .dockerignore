@@ -1,0 +1,10 @@
+.vs
+.vscode
+.git
+.github
+artifacts
+data
+**/bin
+**/obj
+**/*.user
+.env

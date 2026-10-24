@@ -70,7 +70,8 @@ public sealed record AgentSettings(
     string DataRoot,
     string McpServerProject,
     string? ApiKey = null,
-    string DefaultMatchId = "m_100")
+    string DefaultMatchId = "m_100",
+    string? McpServerDll = null)   // published MCP server (used in the container); otherwise the local build is used
 {
     /// <summary>
     /// Reads AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT and (optionally) AZURE_OPENAI_API_KEY.

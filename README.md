@@ -326,6 +326,44 @@ control vs chaos).
 any language and from your team's point of view. The Fact-Checker checks every number against the live stats
 it was written from, sends mistakes back for a rewrite, and checks the translation.
 
+## Try it
+
+**Live demo:** https://YOUR-APP-URL  <!-- replace after deploying -->
+
+1. Open the **Studio**, pick a moment from the strip (for example Quin Abara's shot at 44:44 in match `m_100`).
+2. Ask *"What was his best option?"*, or type your own question, and pick a language and a viewpoint.
+3. Watch the agents work step by step, then read the verdict on the pitch.
+4. Open **Live** to replay a match with live stats, the Control vs Chaos index and the recap.
+
+All match data is synthetic and generated from fixed seeds when the image is built.
+`/health` reports whether the app is up.
+
+## Deploy to Azure
+
+The app runs on **Azure Container Apps** as one container holding the web app, the MCP server and the
+synthetic data. It calls the model with a **managed identity**, so there are no API keys in the image,
+the repo or the settings.
+
+1. Push to `main`. The **Publish image** workflow builds the container and publishes it to
+   `ghcr.io/<github-user>/second-guess` (make the package public once, under your GitHub profile → Packages).
+2. Create the app:
+
+```powershell
+az login
+./deploy/deploy.ps1 -FoundryName <your-foundry-resource> -Image ghcr.io/<github-user>/second-guess:latest
+```
+
+The script creates the app, gives it an identity, grants that identity the **Cognitive Services OpenAI
+User** role on the model, and scales between 0 and 1 replica. After a code change, wait for the workflow,
+then run `./deploy/redeploy.ps1 -Image ghcr.io/<github-user>/second-guess:latest`.
+
+To run the container locally (needs Docker):
+
+```powershell
+docker build -t second-guess .
+docker run -p 8080:8080 second-guess        # studio and live pages; agents need Azure settings
+```
+
 ## Data schema
 
 **Coordinates:** metres on a 105 x 68 pitch, always from the perspective of the event's team,
@@ -359,4 +397,4 @@ which attacks towards x = 105 (goal centre at 105, 34).
 - [x] Deterministic fact-checking and multilingual answers
 - [x] Studio web app: telestrator pitch, Fan/Expert modes, languages, favourite team, agent trace
 - [x] Live match feed: real-time stats, pass difficulty, Control vs Chaos, overlay cards and API, player focus, recaps
-- [ ] Deployment to Azure Container Apps
+- [x] Deployment to Azure Container Apps

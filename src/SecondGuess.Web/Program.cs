@@ -22,6 +22,14 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 // Machine-readable feeds for broadcast partners: every overlay card is timed (match clock + timestamp),
 // has a display duration and priority, and cites the source events it was built from.
+// Health check for Azure Container Apps probes and quick manual checks.
+app.MapGet("/health", (SecondGuessService service) => Results.Ok(new
+{
+    status = "ok",
+    matches = service.ListMatches().Count,
+    agents = service.AgentsUnavailableReason is null ? "configured" : "not configured"
+}));
+
 var api = app.MapGroup("/api");
 api.MapGet("/matches", (SecondGuessService service) => service.ListMatches());
 api.MapGet("/matches/{matchId}/overlays", (string matchId, SecondGuessService service) =>
