@@ -328,7 +328,7 @@ it was written from, sends mistakes back for a rewrite, and checks the translati
 
 ## Try it
 
-**Live demo:** https://YOUR-APP-URL  <!-- replace after deploying -->
+**Live demo:** https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/
 
 1. Open the **Studio**, pick a moment from the strip (for example Quin Abara's shot at 44:44 in match `m_100`).
 2. Ask *"What was his best option?"*, or type your own question, and pick a language and a viewpoint.
