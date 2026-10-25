@@ -1,19 +1,15 @@
 ---
 name: hackathon-submission
-description: Checklist of the Inside the Game Developer Hackathon rules, deadlines and judging criteria. Use when reviewing the project, preparing the submission, the demo video or the README.
+description: Checklist of the Inside the Game Developer Hackathon rules and judging criteria. Use when reviewing the project, preparing the submission, the demo video or the README.
 ---
 # Hackathon submission checklist
-
-## Key dates (Pacific Time)
-- Registration closes: 20 October 2026, 12:00 pm
-- **Submission deadline: 27 October 2026, 11:59 pm** (06:59 am on 28 October UK time, after the clocks go back)
-- Judging: 27 October – 10 November 2026. The demo must stay live and free until then.
 
 ## Required for submission
 - [ ] Public GitHub repository
 - [ ] Project page completed on the hackathon site (pitch/description, Microsoft technologies used)
 - [ ] Demo video **under 2 minutes**, public on YouTube/Vimeo, showing the project actually working
 - [ ] Working demo link or test build, with testing instructions (and credentials if private)
+- [ ] Demo stays live and free until judging ends
 - [ ] All materials in English
 - [ ] Project newly built after 29 September 2026
 

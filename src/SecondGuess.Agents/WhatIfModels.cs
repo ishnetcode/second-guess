@@ -37,7 +37,8 @@ public sealed record WhatIfAnswer(
     FactCheckReport FactCheck,
     int ExplainerAttempts,
     IReadOnlyList<AgentStep> Trace,
-    string? FocusOptionKey = null);   // the option the question asked about, if it named one
+    string? FocusOptionKey = null,    // the option the question asked about, if it named one
+    string? Note = null);             // shown under the answer, e.g. when a translation failed its check
 
 /// <summary>
 /// Shared state passed between the agents. Each agent reads what earlier agents produced and adds its
@@ -53,6 +54,8 @@ public sealed class WhatIfSession(WhatIfRequest request, Action<AgentStep>? onSt
     public FactCheckReport? FactCheck { get; set; }
     public int ExplainerAttempts { get; set; }
     public string? FinalAnswer { get; set; }
+    public string? FinalLanguage { get; set; }
+    public string? Note { get; set; }
     public List<AgentStep> Trace { get; } = [];
 
     /// <summary>Records a hand-off and reports it live (for example to the studio UI).</summary>
@@ -103,4 +106,5 @@ public sealed record RecapAnswer(
     string Language,
     FactCheckReport FactCheck,
     int Attempts,
-    IReadOnlyList<AgentStep> Trace);
+    IReadOnlyList<AgentStep> Trace,
+    string? Note = null);

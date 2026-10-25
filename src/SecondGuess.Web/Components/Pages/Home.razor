@@ -226,6 +226,10 @@
                                 {
                                     <span>Rewritten @Times(answer.ExplainerAttempts - 1) after the fact-check</span>
                                 }
+                                @if (answer.Note is not null)
+                                {
+                                    <span>@answer.Note</span>
+                                }
                             </footer>
                         </article>
 
@@ -547,8 +551,11 @@
         { Agent: "Simulator", Succeeded: false } => ("Moment Finder", "choosing another moment"),
         { Agent: "Simulator" } => ("Explainer", "writing the answer"),
         { Agent: "Explainer" } => ("Fact-Checker", "checking every number"),
-        { Agent: "Fact-Checker", Succeeded: false } => ("Explainer", "rewriting after the fact-check"),
+        // Translation checks first: a failed translation goes back to the Localiser, not the Explainer.
+        { Agent: "Fact-Checker", Action: "verify translation", Succeeded: false } => ("Localiser", "translating again"),
         { Agent: "Fact-Checker", Action: "verify translation" } => ("Studio", "finishing"),
+        { Agent: "Fact-Checker", Action: "fall back to English" } => ("Studio", "finishing"),
+        { Agent: "Fact-Checker", Succeeded: false } => ("Explainer", "rewriting after the fact-check"),
         { Agent: "Fact-Checker" } when language != "English" => ("Localiser", $"translating to {language}"),
         { Agent: "Localiser" } => ("Fact-Checker", "checking the translation"),
         _ => ("Studio", "finishing")

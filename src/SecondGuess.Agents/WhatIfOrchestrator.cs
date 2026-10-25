@@ -29,6 +29,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
 {
     private const int MaxExplainerAttempts = 3;
     private const int MaxMomentAttempts = 2;
+    private const int MaxTranslationAttempts = 2;
 
     private static readonly string[] MomentFinderToolNames = ["list_matches", "rank_decisions", "find_moments", "get_game_state"];
 
@@ -123,14 +124,15 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         return new WhatIfAnswer(
             Answer: session.FinalAnswer!,
             EnglishAnswer: session.Draft!,
-            Language: request.Language,
+            Language: session.FinalLanguage ?? request.Language,
             Mode: request.Mode,
             Moment: session.Moment!,
             Simulation: session.Simulation!,
             FactCheck: session.FactCheck!,
             ExplainerAttempts: session.ExplainerAttempts,
             Trace: session.Trace,
-            FocusOptionKey: OptionFocus.Resolve(request.Question, session.Simulation!)?.Key);
+            FocusOptionKey: OptionFocus.Resolve(request.Question, session.Simulation!)?.Key,
+            Note: session.Note);
     }
 
     // ------------------------------------------------------------ agents 1 + 2
@@ -258,19 +260,27 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
             return;
         }
 
-        string translated = "";
-        for (int attempt = 1; attempt <= 2; attempt++)
+        for (int attempt = 1; attempt <= MaxTranslationAttempts; attempt++)
         {
             string prompt = $"Target language: {language}\n\nText:\n{session.Draft}";
-            translated = (await RunStepAsync(session, "Localiser", $"translate to {language}", () => RunAgentAsync(_localiser, prompt, ct))).Trim();
+            string translated = (await RunStepAsync(session, "Localiser", attempt == 1 ? $"translate to {language}" : $"translate again (attempt {attempt})",
+                () => RunAgentAsync(_localiser, prompt, ct))).Trim();
 
             var report = AnswerFactChecker.CheckTranslation(session.Draft!, translated, session.Simulation!);
             session.AddStep(new AgentStep("Fact-Checker", "verify translation",
                 report.Passed ? "numbers preserved" : string.Join(" ", report.Issues), report.Passed, TimeSpan.Zero));
-            if (report.Passed) break;
+            if (report.Passed)
+            {
+                session.FinalAnswer = translated;
+                return;
+            }
         }
 
-        session.FinalAnswer = translated;
+        // Never show an unverified translation as fact-checked: fall back to the English answer that passed.
+        session.FinalAnswer = session.Draft;
+        session.FinalLanguage = "English";
+        session.Note = $"The {language} translation changed some numbers, so the checked English answer is shown.";
+        session.AddStep(new AgentStep("Fact-Checker", "fall back to English", session.Note, true, TimeSpan.Zero));
     }
 
     // ------------------------------------------------------------ recaps
@@ -318,18 +328,37 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         }
 
         string final = draft;
-        bool english = request.Language.Equals("English", StringComparison.OrdinalIgnoreCase) || request.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        string language = request.Language;
+        string? note = null;
+        bool english = language.Equals("English", StringComparison.OrdinalIgnoreCase) || language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         if (!english)
         {
-            string translatePrompt = $"Target language: {request.Language}\n\nText:\n{draft}";
-            final = (await RunStepAsync(session, "Localiser", $"translate to {request.Language}",
-                () => RunAgentAsync(_localiser, translatePrompt, cancellationToken))).Trim();
-            var translationReport = AnswerFactChecker.CheckTranslationAgainstSource(draft, final, request.Context);
-            session.AddStep(new AgentStep("Fact-Checker", "verify translation",
-                translationReport.Passed ? "numbers preserved" : string.Join(" ", translationReport.Issues), translationReport.Passed, TimeSpan.Zero));
+            bool translatedOk = false;
+            for (int attempt = 1; attempt <= MaxTranslationAttempts && !translatedOk; attempt++)
+            {
+                string translatePrompt = $"Target language: {language}\n\nText:\n{draft}";
+                string translated = (await RunStepAsync(session, "Localiser", attempt == 1 ? $"translate to {language}" : $"translate again (attempt {attempt})",
+                    () => RunAgentAsync(_localiser, translatePrompt, cancellationToken))).Trim();
+                var translationReport = AnswerFactChecker.CheckTranslationAgainstSource(draft, translated, request.Context);
+                session.AddStep(new AgentStep("Fact-Checker", "verify translation",
+                    translationReport.Passed ? "numbers preserved" : string.Join(" ", translationReport.Issues), translationReport.Passed, TimeSpan.Zero));
+                if (translationReport.Passed)
+                {
+                    final = translated;
+                    translatedOk = true;
+                }
+            }
+
+            if (!translatedOk)
+            {
+                // Same rule as answers: an unverified translation is never shown as fact-checked.
+                note = $"The {language} translation changed some numbers, so the checked English recap is shown.";
+                language = "English";
+                session.AddStep(new AgentStep("Fact-Checker", "fall back to English", note, true, TimeSpan.Zero));
+            }
         }
 
-        return new RecapAnswer(final, draft, request.Language, report, attempts, session.Trace);
+        return new RecapAnswer(final, draft, language, report, attempts, session.Trace, note);
     }
 
     // ------------------------------------------------------------ helpers

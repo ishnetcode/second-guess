@@ -240,6 +240,10 @@
                                 {
                                     <span>Rewritten @Times(recap.Attempts - 1) after the fact-check</span>
                                 }
+                                @if (recap.Note is not null)
+                                {
+                                    <span>@recap.Note</span>
+                                }
                             </footer>
                         </article>
                         <AgentTrace Steps="recap.Trace" />

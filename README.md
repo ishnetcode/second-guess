@@ -44,16 +44,17 @@ growing synthetic dataset for training better football decision models.
 ## Architecture
 
 ```
-Synthetic match generator ──► Microsoft Fabric (Eventstream → Eventhouse)
+Synthetic match generator (seeded, deterministic) ──► match events + freeze frames (JSON Lines)
                                         │
-                     Simulation engine (MCP server, .NET)
+            Simulation engine + live stats engine, exposed as an MCP server (.NET)
                                         │
            Multi-agent system (Microsoft Agent Framework + Microsoft.Extensions.AI)
-     Moment Finder → Simulator → Explainer → Fact-Checker → Localiser
+     Moment Finder → Simulator → Explainer ⇄ Fact-Checker → Localiser ⇄ Fact-Checker
+                          Recapper ⇄ Fact-Checker (live recaps)
                                         │
-              Azure OpenAI via Microsoft Foundry · Azure AI Translator / Speech
+                 gpt-4.1-mini in Microsoft Foundry (managed identity, no keys)
                                         │
-                Web UI (pitch view, Fan/Expert modes) on Azure Container Apps
+     Blazor web app (studio + live replay, voice in/out) on Azure Container Apps
 ```
 
 | Agent | Role |
@@ -62,16 +63,21 @@ Synthetic match generator ──► Microsoft Fabric (Eventstream → Eventhouse
 | **Simulator** | Calls the simulation tools and returns value ranges |
 | **Explainer** | Writes the Fan-mode or Expert-mode answer |
 | **Fact-Checker** | Checks every number against the simulation output; sends failures back to be rewritten |
-| **Localiser** | Translates the answer into the viewer's language |
+| **Localiser** | Translates the answer into the viewer's language; the Fact-Checker checks the numbers survived, and if they don't, the checked English answer is shown instead |
+| **Recapper** | Writes live match recaps from the stats engine; checked by the Fact-Checker against those stats |
+
+The Moment Finder, Explainer, Localiser and Recapper are LLM agents. The Simulator and Fact-Checker are
+deliberately deterministic: the numbers come from code, and the language model only explains them.
 
 ## Technology
 
 - **.NET 10 / C#** with **Microsoft.Extensions.AI** and the **Microsoft Agent Framework**
-- **Microsoft Foundry** and **Azure OpenAI** for models and evaluation
+- **Microsoft Foundry** (Azure OpenAI, `gpt-4.1-mini`) for the language model, called with **Microsoft Entra ID / managed identity**
 - **Model Context Protocol (MCP)** to expose the simulation engine as agent tools
-- **Microsoft Fabric Real-Time Intelligence** for streaming and storing match events
-- **Azure AI Translator** and **Azure AI Speech** for multilingual output
-- **Azure Container Apps** for hosting
+- **Multilingual output** by the Localiser agent, verified by the Fact-Checker
+- **Voice** with the browser's built-in speech recognition and synthesis (Edge, Chrome)
+- **Blazor Server** for the studio and live replay
+- **Azure Container Apps** for hosting, with the image built by **GitHub Actions** and published to **GitHub Container Registry**
 - **GitHub, GitHub Copilot and GitHub Actions** for development and CI/CD
 
 ## Built with GitHub Copilot
@@ -331,7 +337,7 @@ it was written from, sends mistakes back for a rewrite, and checks the translati
 
 ## Try it
 
-**Live demo:** https://YOUR-APP-URL  <!-- replace after deploying -->
+**Live demo:**: https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/
 
 1. Open the **Studio**, pick a moment from the strip (for example Quin Abara's shot at 44:44 in match `m_100`).
 2. Ask *"What was his best option?"*, or type your own question, and pick a language and a viewpoint.
