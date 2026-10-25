@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Azure;
+using Azure.Core;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Agents.AI;
@@ -70,10 +71,20 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         IList<McpClientTool> allTools = await mcp.ListToolsAsync(cancellationToken: cancellationToken);
         AITool[] momentTools = allTools.Where(t => MomentFinderToolNames.Contains(t.Name)).Cast<AITool>().ToArray();
 
-        // 2. Connect to the model deployed in Microsoft Foundry (Azure OpenAI). No key = sign in with your Azure account.
-        AzureOpenAIClient openAi = string.IsNullOrWhiteSpace(settings.ApiKey)
-            ? new AzureOpenAIClient(new Uri(settings.Endpoint), new DefaultAzureCredential())
-            : new AzureOpenAIClient(new Uri(settings.Endpoint), new AzureKeyCredential(settings.ApiKey));
+        // 2. Connect to the model deployed in Microsoft Foundry (Azure OpenAI). No key = sign in with an Azure identity.
+        AzureOpenAIClient openAi;
+        string signIn;
+        if (!string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            openAi = new AzureOpenAIClient(new Uri(settings.Endpoint), new AzureKeyCredential(settings.ApiKey));
+            signIn = "an API key (AZURE_OPENAI_API_KEY)";
+        }
+        else
+        {
+            (TokenCredential credential, signIn) = CreateCredential();
+            openAi = new AzureOpenAIClient(new Uri(settings.Endpoint), credential);
+        }
+        Console.WriteLine($"Second Guess agents: model '{settings.Deployment}' at {new Uri(settings.Endpoint).Host}, signed in with {signIn}.");
         // Convert to the Microsoft.Extensions.AI IChatClient abstraction that Agent Framework builds on.
         IChatClient chatClient = openAi.GetChatClient(settings.Deployment).AsIChatClient();
 
@@ -84,6 +95,20 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         AIAgent recapper = chatClient.AsAIAgent(instructions: AgentInstructions.Recapper, name: "Recapper");
 
         return new WhatIfOrchestrator(settings, mcp, momentFinder, explainer, localiser, recapper);
+    }
+
+    /// <summary>
+    /// Picks the identity explicitly rather than letting DefaultAzureCredential guess. On a laptop that guess can pick
+    /// Visual Studio's or Windows' cached account instead of `az login`, which gives a 401 even when az works.
+    /// </summary>
+    private static (TokenCredential Credential, string Description) CreateCredential()
+    {
+        // Azure Container Apps sets IDENTITY_ENDPOINT for apps that have a managed identity.
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IDENTITY_ENDPOINT")))
+            return (new ManagedIdentityCredential(), "the app's managed identity");
+
+        // On a laptop: the account you signed in with `az login`.
+        return (new AzureCliCredential(), "your az login account");
     }
 
     /// <summary>Answers a what-if question end to end. <paramref name="onStep"/> is called as each agent finishes.</summary>

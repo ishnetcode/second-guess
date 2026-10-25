@@ -1,0 +1,19 @@
+@* The page links in the header, shared by every page so they can't drift apart. *@
+@inject NavigationManager Navigation
+
+<nav class="site-nav" aria-label="Pages">
+    @foreach (var (href, label) in Pages)
+    {
+        <a href="@href" aria-current="@(IsCurrent(href) ? "page" : null)">@label</a>
+    }
+</nav>
+
+@code {
+    private static readonly (string Href, string Label)[] Pages = [("/", "Studio"), ("/live", "Live")];
+
+    private bool IsCurrent(string href)
+    {
+        string path = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
+        return href == "/" ? path == "/" : path.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+    }
+}

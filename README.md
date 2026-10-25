@@ -276,6 +276,9 @@ dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should h
 - **The decision taken** as a dashed blue line, and **the best alternative drawn in marker yellow** when the agents answer.
 - **Every option the engine simulated**, as bars with P10–P90 ranges.
 - **Ask the agents** in plain language, in **Fan** or **Expert** mode, in eight languages, from your team's point of view.
+- **Ask by voice, hear the verdict:** press the microphone, ask in the language you picked, and the
+  fact-checked answer is read back in that language. It uses the browser's own speech services (Edge, Chrome),
+  so it needs no keys; in other browsers the voice buttons stay hidden and everything else works.
 - **The fact-check result** and **every agent hand-off**, so viewers can see how the answer was produced.
 - **Decisions worth a second look:** the shots in the match where another option was better, one click to load.
 
@@ -328,7 +331,7 @@ it was written from, sends mistakes back for a rewrite, and checks the translati
 
 ## Try it
 
-**Live demo:** https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/
+**Live demo:** https://YOUR-APP-URL  <!-- replace after deploying -->
 
 1. Open the **Studio**, pick a moment from the strip (for example Quin Abara's shot at 44:44 in match `m_100`).
 2. Ask *"What was his best option?"*, or type your own question, and pick a language and a viewpoint.

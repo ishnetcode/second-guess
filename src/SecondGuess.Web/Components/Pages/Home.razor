@@ -1,11 +1,16 @@
 @page "/"
 @rendermode InteractiveServer
 @using System.Globalization
+@using System.Text.RegularExpressions
+@using Microsoft.JSInterop
 @using SecondGuess.Agents
 @using SecondGuess.Simulation
 @using SecondGuess.Web.Components.Studio
 @using SecondGuess.Web.Services
+@using SecondGuess.Web.Components.Shared
 @inject SecondGuessService Service
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <PageTitle>Second Guess</PageTitle>
 
@@ -13,11 +18,8 @@
     <header class="masthead">
         <div class="brand">
             <h1>Second Guess</h1>
+            <SiteNav />
             <p>Every big moment had other options. See what they were worth.</p>
-            <nav class="site-nav" aria-label="Pages">
-                <a href="/" aria-current="page">Studio</a>
-                <a href="/live">Live</a>
-            </nav>
         </div>
 
         @if (matches.Count > 0)
@@ -124,11 +126,28 @@
                         <label for="question" class="own">Or ask your own</label>
                         <div class="own-row">
                             <input id="question" type="text" @bind="question" @bind:event="oninput" disabled="@busy"
-                                   placeholder="What if he had played it to Okoro?" />
+                                   placeholder="@(listening ? "Listening…" : "What if he had played it to Okoro?")" />
+                            @if (canListen)
+                            {
+                                <button type="button" class="mic-button" aria-pressed="@Pressed(listening)"
+                                        aria-label="@(listening ? "Stop listening" : $"Ask by voice, in {language}")"
+                                        title="@(listening ? "Stop listening" : $"Ask by voice, in {language}")"
+                                        disabled="@(!listening && (busy || view is null || Service.AgentsUnavailableReason is not null))"
+                                        @onclick="ToggleListeningAsync">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect x="9" y="3" width="6" height="11" rx="3" />
+                                        <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
+                                    </svg>
+                                </button>
+                            }
                             <button type="submit" class="ask-button"
                                     disabled="@(busy || string.IsNullOrWhiteSpace(question) || Service.AgentsUnavailableReason is not null)">Ask</button>
                         </div>
                     </form>
+                    @if (voiceStatus is not null)
+                    {
+                        <p class="voice-status" role="status">@voiceStatus</p>
+                    }
 
                     <div class="preferences">
                         <label>
@@ -184,6 +203,16 @@
                     {
                         <article class="answer">
                             <p dir="auto" lang="@LangCode(answer.Language)">@answer.Answer</p>
+                            @if (canSpeak)
+                            {
+                                <button type="button" class="read-aloud" aria-pressed="@Pressed(speaking)" @onclick="ToggleSpeakingAsync">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+                                        <path class="wave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+                                    </svg>
+                                    @(speaking ? "Stop reading" : "Read it out")
+                                </button>
+                            }
                             <footer class="@(answer.FactCheck.Passed ? "checked" : "unchecked")">
                                 @if (answer.FactCheck.Passed)
                                 {
@@ -224,6 +253,10 @@
         new("Give me the expert view", d => d is null ? "Break this moment down." : $"Break down {d.PlayerName}'s decision at {d.MatchClock}.", ViewerMode.Expert)
     ];
 
+    // Deep links from the live feed: /?match=m_100&event=evt_001168 opens that moment.
+    [SupplyParameterFromQuery(Name = "match")] public string? QueryMatch { get; set; }
+    [SupplyParameterFromQuery(Name = "event")] public string? QueryEvent { get; set; }
+
     private IReadOnlyList<MatchListItem> matches = [];
     private IReadOnlyList<DecisionRanking>? decisions;
     private string homeTeam = "";
@@ -248,8 +281,33 @@
         matches = Service.ListMatches();
         if (matches.Count == 0) return;
 
-        matchId = matches.Any(m => m.MatchId == "m_100") ? "m_100" : matches[0].MatchId;
+        matchId = QueryMatch is { } q && matches.Any(m => m.MatchId == q) ? q
+                : matches.Any(m => m.MatchId == "m_100") ? "m_100" : matches[0].MatchId;
         await LoadMatchAsync();
+
+        // Opened from a live "Ask Second Guess why" link: show that exact moment.
+        if (QueryEvent is { } eventId && decisions?.FirstOrDefault(d => d.EventId == eventId) is { } linked)
+            await SelectDecisionAsync(linked);
+        else if (QueryEvent is { } other)
+            await SelectEventAsync(other);
+    }
+
+    /// <summary>Selects a moment that isn't in the key decisions list (for example a shot linked from the live feed).</summary>
+    private async Task SelectEventAsync(string eventId)
+    {
+        try
+        {
+            view = await Service.PreviewAsync(matchId, eventId);
+            selected = new DecisionRanking(eventId, view.Result.MatchClock, view.Result.PlayerName, view.Result.TeamName,
+                view.Result.ActualAction, view.Result.ActualOutcome, view.Result.Actual.MeanValue,
+                view.Result.BestAlternative?.Description ?? "", view.Result.BestAlternative?.MeanValue ?? 0, view.Result.DifferenceVsActual);
+            answer = null;
+            revealed = Service.AgentsUnavailableReason is not null;
+        }
+        catch (Exception ex)
+        {
+            error = $"That moment could not be loaded: {ex.Message}";
+        }
     }
 
     private async Task LoadMatchAsync()
@@ -274,6 +332,7 @@
     private async Task SelectDecisionAsync(DecisionRanking decision)
     {
         selected = decision;
+        await StopSpeakingAsync();
         answer = null;
         error = null;
         question = "";
@@ -290,8 +349,10 @@
 
     private Task AskTypedAsync() => AskAsync(question, aboutSelected: false);
 
-    private async Task AskAsync(string text, bool aboutSelected)
+    private async Task AskAsync(string text, bool aboutSelected, bool byVoice = false)
     {
+        await StopSpeakingAsync();
+        if (!byVoice) voiceStatus = null;
         busy = true;
         error = null;
         answer = null;
@@ -334,6 +395,148 @@
         {
             busy = false;
         }
+
+        // Asked out loud, answered out loud.
+        if (byVoice && answer is not null)
+        {
+            voiceStatus = null;
+            await StartSpeakingAsync();
+        }
+    }
+
+    // ---- Voice: the browser's own speech recognition and synthesis (Edge and Chrome), no keys needed ----
+
+    private sealed record VoiceSupport(bool Listen, bool Speak);
+
+    private IJSObjectReference? voice;
+    private DotNetObjectReference<Home>? voiceRef;
+    private bool canListen, canSpeak, listening, speaking;
+    private string? voiceStatus;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            voice = await JS.InvokeAsync<IJSObjectReference>("import", "./js/voice.js");
+            voiceRef = DotNetObjectReference.Create(this);
+            var support = await voice.InvokeAsync<VoiceSupport>("supported");
+            canListen = support.Listen;
+            canSpeak = support.Speak;
+            StateHasChanged();
+        }
+        catch (JSException)
+        {
+            // Voice is an extra: if the browser can't load it, the studio works as before.
+        }
+    }
+
+    private async Task ToggleListeningAsync()
+    {
+        if (voice is null) return;
+        if (listening)
+        {
+            await voice.InvokeVoidAsync("stopListening");
+            return;
+        }
+
+        listening = true;
+        question = "";
+        voiceStatus = $"Listening… ask your question in {language}.";
+        await voice.InvokeVoidAsync("listen", voiceRef, Locale(language));
+    }
+
+    [JSInvokable]
+    public Task OnVoiceHeard(string text, bool isFinal) => InvokeAsync(async () =>
+    {
+        question = text;
+        if (!isFinal)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        listening = false;
+        if (busy) return;   // a suggested question was clicked while listening
+        voiceStatus = $"Heard: “{text}”";
+        StateHasChanged();
+
+        // A spoken question is about the moment on screen, unless it names a time ("at 44 minutes").
+        bool aboutSelected = selected is not null && !Regex.IsMatch(text, @"\d");
+        await AskAsync(text, aboutSelected, byVoice: true);
+        StateHasChanged();
+    });
+
+    [JSInvokable]
+    public Task OnVoiceEnded(string? error) => InvokeAsync(() =>
+    {
+        listening = false;
+        voiceStatus = error switch
+        {
+            null => voiceStatus,
+            "no-speech" => "I didn't catch that. Press the microphone and try again.",
+            "not-allowed" or "service-not-allowed" => "Microphone access is blocked. Allow it from the icon in the address bar, then try again.",
+            "audio-capture" => "No microphone was found.",
+            "network" => "Speech recognition needs an internet connection.",
+            "aborted" => null,
+            _ => "Voice input stopped. Try again, or type your question."
+        };
+        StateHasChanged();
+    });
+
+    private Task ToggleSpeakingAsync() => speaking ? StopSpeakingAsync() : StartSpeakingAsync();
+
+    private async Task StartSpeakingAsync()
+    {
+        if (voice is null || !canSpeak || answer is null) return;
+        speaking = true;
+        StateHasChanged();
+
+        bool started = await voice.InvokeAsync<bool>("speak", voiceRef, answer.Answer, Locale(answer.Language));
+        if (!started)
+        {
+            speaking = false;
+            voiceStatus = $"This browser has no {answer.Language} voice. Try Microsoft Edge, or add the language under Windows Settings › Time & language › Speech.";
+        }
+    }
+
+    private async Task StopSpeakingAsync()
+    {
+        speaking = false;
+        if (voice is not null)
+        {
+            try { await voice.InvokeVoidAsync("stopSpeaking"); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+
+    [JSInvokable]
+    public Task OnSpeechEnded() => InvokeAsync(() =>
+    {
+        speaking = false;
+        StateHasChanged();
+    });
+
+    // Browser speech locales for the answer languages.
+    private static string Locale(string language) => language switch
+    {
+        "Spanish" => "es-ES", "French" => "fr-FR", "Portuguese" => "pt-BR", "German" => "de-DE",
+        "Arabic" => "ar-SA", "Hindi" => "hi-IN", "Japanese" => "ja-JP", _ => "en-GB"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (voice is not null)
+        {
+            try
+            {
+                await voice.InvokeVoidAsync("stopListening");
+                await voice.InvokeVoidAsync("stopSpeaking");
+                await voice.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        voiceRef?.Dispose();
     }
 
     // What the agents are doing now, inferred from the last finished step.

@@ -9,6 +9,7 @@
 @using SecondGuess.Web.Components.Live
 @using SecondGuess.Web.Components.Studio
 @using SecondGuess.Web.Services
+@using SecondGuess.Web.Components.Shared
 @inject SecondGuessService Service
 
 <PageTitle>Second Guess: live</PageTitle>
@@ -17,10 +18,7 @@
     <header class="masthead">
         <div class="brand">
             <h1>Second Guess</h1>
-            <nav class="site-nav" aria-label="Pages">
-                <a href="/">Studio</a>
-                <a href="/live" aria-current="page">Live</a>
-            </nav>
+            <SiteNav />
         </div>
         @if (matches.Count > 0)
         {
