@@ -8,8 +8,8 @@ and explain, in plain language, how it would have changed the game.
 > Built for the Microsoft *Inside the Game* Developer Hackathon.
 > All teams, players and matches are synthetic and invented.
 
-**[▶ Live demo](https://YOUR-APP-URL)** · **[🎬 Demo video](https://YOUR-VIDEO-URL)** · [Try it](#try-it) · [Architecture](#architecture)
-<!-- Replace YOUR-APP-URL and YOUR-VIDEO-URL before submitting. -->
+**[▶ Live demo](https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/)** · **[🎬 Demo video](https://YOUR-VIDEO-URL)** · [Try it](#try-it) · [Architecture](#architecture)
+<!-- Replace YOUR-VIDEO-URL before submitting. -->
 
 ## What this project does
 
@@ -46,7 +46,7 @@ growing synthetic dataset for training better football decision models.
 
 ## Architecture
 
-![Second Guess architecture: a Blazor web app, six agents and an MCP what-if engine on Azure Container Apps, calling Microsoft Foundry with a managed identity](docs/images/architecture.png)
+![Second Guess architecture: a Blazor web app, six agents and an MCP what-if engine on Azure Container Apps, calling Microsoft Foundry with a managed identity](docs/images/second-guess-architecture.png)
 
 ```
 Synthetic match generator (seeded, deterministic) ──► match events + freeze frames (JSON Lines)
@@ -349,7 +349,7 @@ it was written from, sends mistakes back for a rewrite, and checks the translati
 
 ## Try it
 
-**Live demo:** https://YOUR-APP-URL · free, no sign-in needed. Use Edge or Chrome for voice.
+**Live demo:** https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/ · free, no sign-in needed. Use Edge or Chrome for voice.
 
 1. Open the **Studio** and pick a moment from the strip. Each card shows the shot's value and the better option.
 2. Ask *"What was his best option?"*, press 🎤 and ask out loud, or type your own question. Pick a language and a viewpoint.
