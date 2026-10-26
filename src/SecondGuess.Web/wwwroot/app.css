@@ -607,6 +607,12 @@ select {
 
 .own-row .ask-button { border-radius: var(--radius-small); }
 
+.strip-hint {
+    margin: -4px 0 12px;
+    font-size: 15px;
+    color: var(--muted);
+}
+
 /* Voice: ask out loud, hear the verdict */
 .mic-button {
     flex: none;

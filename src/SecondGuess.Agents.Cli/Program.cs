@@ -1,4 +1,5 @@
 using SecondGuess.Agents;
+using SecondGuess.Agents.Cli;
 
 // Ask the Second Guess agents a what-if question from the command line.
 //
@@ -7,29 +8,22 @@ using SecondGuess.Agents;
 //
 // Requires AZURE_OPENAI_ENDPOINT (and optionally AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_API_KEY).
 
-if (args.Length == 0 || args[0].StartsWith("--"))
+if (!CliArguments.TryParse(args, out CliArguments? parsed) || parsed is null)
 {
     Console.WriteLine("Usage: SecondGuess.Agents.Cli \"<question>\" [--match m_100] [--mode fan|expert] [--lang English] [--team \"<team>\"]");
     return 1;
 }
 
-string question = args[0];
-var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-for (int i = 1; i < args.Length - 1; i++)
-{
-    if (args[i].StartsWith("--")) { options[args[i][2..]] = args[i + 1]; i++; }
-}
-
 string repoRoot = FindRepoRoot();
-var settings = AgentSettings.FromEnvironment(repoRoot, options.GetValueOrDefault("match"));
+var settings = AgentSettings.FromEnvironment(repoRoot, parsed.Match);
 var request = new WhatIfRequest(
-    Question: question,
-    MatchId: options.GetValueOrDefault("match"),
-    Mode: options.GetValueOrDefault("mode")?.Equals("expert", StringComparison.OrdinalIgnoreCase) == true ? ViewerMode.Expert : ViewerMode.Fan,
-    Language: options.GetValueOrDefault("lang") ?? "English",
-    FavouriteTeam: options.GetValueOrDefault("team"));
+    Question: parsed.Question,
+    MatchId: parsed.Match,
+    Mode: parsed.Mode == "expert" ? ViewerMode.Expert : ViewerMode.Fan,
+    Language: parsed.Language,
+    FavouriteTeam: parsed.Team);
 
-Console.WriteLine($"\n  Question: {question}");
+Console.WriteLine($"\n  Question: {parsed.Question}");
 Console.WriteLine($"  Mode: {request.Mode}   Language: {request.Language}   Favourite team: {request.FavouriteTeam ?? "-"}\n");
 Console.WriteLine("  Starting agents...");
 

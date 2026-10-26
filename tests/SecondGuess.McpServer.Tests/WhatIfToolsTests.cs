@@ -92,11 +92,43 @@ public sealed class WhatIfToolsTests : IDisposable
     }
 
     [Fact]
+    public void RankDecisions_ReturnsRankedResultsAndReusesCachedResult()
+    {
+        var engine = new WhatIfEngine();
+
+        string first = WhatIfTools.RankDecisions(_repository, engine, "m_42", limit: 1);
+        string second = WhatIfTools.RankDecisions(_repository, engine, "m_42", limit: 1);
+        using JsonDocument document = JsonDocument.Parse(first);
+        JsonElement[] rankings = document.RootElement.EnumerateArray().ToArray();
+
+        Assert.Equal(first, second);
+        Assert.InRange(rankings.Length, 0, 1);
+        Assert.All(rankings, ranking => Assert.True(ranking.GetProperty("eventId").GetString()?.Length > 0));
+    }
+
+    [Fact]
     public void FindMoments_ForUnknownMatch_ReturnsErrorObject()
     {
         using JsonDocument document = JsonDocument.Parse(WhatIfTools.FindMoments(_repository, "m_missing"));
 
         Assert.Contains("m_missing", document.RootElement.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public void GetGameState_ForUnknownEvent_ReturnsErrorObject()
+    {
+        using JsonDocument document = JsonDocument.Parse(WhatIfTools.GetGameState(_repository, "m_42", "evt_missing"));
+
+        Assert.Contains("evt_missing", document.RootElement.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public void FindMoments_ClampsRequestedLimit()
+    {
+        string json = WhatIfTools.FindMoments(_repository, "m_42", limit: 500);
+        using JsonDocument document = JsonDocument.Parse(json);
+
+        Assert.InRange(document.RootElement.GetArrayLength(), 0, 50);
     }
 
     public void Dispose()

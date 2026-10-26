@@ -13,5 +13,8 @@
     <Project Path="tests/SecondGuess.Generator.Tests/SecondGuess.Generator.Tests.csproj" />
     <Project Path="tests/SecondGuess.McpServer.Tests/SecondGuess.McpServer.Tests.csproj" />
     <Project Path="tests/SecondGuess.Simulation.Tests/SecondGuess.Simulation.Tests.csproj" />
+    <Project Path="tests/SecondGuess.Agents.Tests/SecondGuess.Agents.Tests.csproj" />
+    <Project Path="tests/SecondGuess.Agents.Cli.Tests/SecondGuess.Agents.Cli.Tests.csproj" />
+    <Project Path="tests/SecondGuess.Web.Tests/SecondGuess.Web.Tests.csproj" />
   </Folder>  
 </Solution>

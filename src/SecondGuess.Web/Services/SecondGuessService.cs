@@ -52,6 +52,7 @@ public sealed class SecondGuessService : IAsyncDisposable
         Task.Run(() => _keyDecisions.GetOrAdd(matchId, id => _engine
             .RankDecisions(_repository.Get(id), limit: 6, runs: WhatIfEngine.DefaultRuns)
             .Where(d => d.Difference > 0)   // only moments where another option really was better
+            .OrderBy(d => d.EventId, StringComparer.Ordinal)   // the biggest missed chances, shown in match order
             .ToList()));
 
     /// <summary>Instant, deterministic preview of a moment: player positions plus the simulated options.</summary>

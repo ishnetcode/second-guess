@@ -401,7 +401,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
     }
 
     /// <summary>Fan answers: at most 3 sentences (not counting the source line) and at most 3 percentages.</summary>
-    private static List<string> FanStyleIssues(string answer)
+    internal static List<string> FanStyleIssues(string answer)
     {
         var issues = new List<string>();
         string body = SourceLine().Replace(answer, "");
@@ -422,7 +422,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
     [GeneratedRegex(@"\d+(?:[.,]\d+)?\s*%")]
     private static partial Regex PercentToken();
 
-    private static MomentPick? ParseMoment(string reply)
+    internal static MomentPick? ParseMoment(string reply)
     {
         Match json = JsonObject().Match(reply);
         if (!json.Success) return null;
@@ -441,7 +441,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         }
     }
 
-    private static bool TryParseError(string json, out string error)
+    internal static bool TryParseError(string json, out string error)
     {
         error = "";
         try
@@ -461,7 +461,7 @@ public sealed partial class WhatIfOrchestrator : IAsyncDisposable
         }
     }
 
-    private static string Summarise(string text)
+    internal static string Summarise(string text)
     {
         string oneLine = WhitespacePattern().Replace(text, " ").Trim();
         return oneLine.Length <= 160 ? oneLine : oneLine[..157] + "...";

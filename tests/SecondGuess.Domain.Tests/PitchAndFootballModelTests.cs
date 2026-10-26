@@ -33,6 +33,18 @@ public class PitchAndFootballModelTests
     }
 
     [Fact]
+    public void Distance_UsesBothCoordinates()
+    {
+        Assert.Equal(5, Geometry.Distance(new Point(1, 2), new Point(4, 6)), precision: 10);
+    }
+
+    [Fact]
+    public void DistanceToSegment_HandlesDegenerateSegment()
+    {
+        Assert.Equal(5, Geometry.DistanceToSegment(new Point(4, 6), new Point(1, 2), new Point(1, 2)), precision: 10);
+    }
+
+    [Fact]
     public void InShotCone_RecognizesPointBetweenShooterAndGoal()
     {
         Assert.True(Geometry.InShotCone(new Point(95, Pitch.CentreY), new Point(80, Pitch.CentreY)));
