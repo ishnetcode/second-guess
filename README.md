@@ -8,6 +8,9 @@ and explain, in plain language, how it would have changed the game.
 > Built for the Microsoft *Inside the Game* Developer Hackathon.
 > All teams, players and matches are synthetic and invented.
 
+**[▶ Live demo](https://YOUR-APP-URL)** · **[🎬 Demo video](https://YOUR-VIDEO-URL)** · [Try it](#try-it) · [Architecture](#architecture)
+<!-- Replace YOUR-APP-URL and YOUR-VIDEO-URL before submitting. -->
+
 ## What this project does
 
 Every fan asks "what if?" after a big moment, and every expert argues about it. Today those debates
@@ -34,14 +37,16 @@ growing synthetic dataset for training better football decision models.
 
 | Stage | What Second Guess does |
 |---|---|
-| **Ingest** | Streams synthetic match events (passes, shots, tackles, pressure, possession changes) as they happen |
+| **Ingest** | Generates synthetic match events (passes, shots, tackles, pressure, possession changes) and replays them as a live feed |
 | **Interpret** | Computes xG, pass success, pass difficulty, pressure, ball and shot speed |
 | **Explain** | Explains why a decision mattered by comparing it with the alternatives |
-| **Render** | Shows the actual and alternative paths on an animated pitch, plus timestamped JSON overlay cards for broadcast |
-| **Personalise** | Fan vs Expert mode, favourite club, and multiple languages |
+| **Render** | Draws the actual and alternative paths on the pitch, broadcast lower-thirds, and timestamped JSON overlay cards |
+| **Personalise** | Fan vs Expert mode, favourite club, eight languages, voice questions and read-aloud answers, follow a player |
 | **Data innovation** | Generates synthetic, football-realistic matches and a counterfactual dataset |
 
 ## Architecture
+
+![Second Guess architecture: a Blazor web app, six agents and an MCP what-if engine on Azure Container Apps, calling Microsoft Foundry with a managed identity](docs/images/architecture.png)
 
 ```
 Synthetic match generator (seeded, deterministic) ──► match events + freeze frames (JSON Lines)
@@ -124,6 +129,9 @@ probabilities and the source event IDs. Simulations are presented as estimates, 
 .github/
   agents/ skills/ prompts/ instructions/   GitHub Copilot toolkit (see "Built with GitHub Copilot")
   workflows/               CI and Copilot coding agent setup
+deploy/                    deploy.ps1 and redeploy.ps1 for Azure Container Apps
+docs/images/               Architecture diagram
+Dockerfile                 One image: web app, MCP server and generated synthetic data
 src/
   SecondGuess.Domain/      Shared types, pitch geometry and football models (xG, pass success, pressure)
   SecondGuess.Generator/   Synthetic match generator, real-time replayer and what-if CLI
@@ -131,7 +139,7 @@ src/
   SecondGuess.McpServer/   MCP server exposing the what-if engine as tools for agents
   SecondGuess.Agents/      Multi-agent system (Microsoft Agent Framework + Microsoft Foundry)
   SecondGuess.Agents.Cli/  Ask the agents a what-if question from the command line
-  SecondGuess.Web/         Blazor studio app: telestrator pitch, options, question box, agent hand-offs
+  SecondGuess.Web/         Blazor app: studio (pitch, options, voice questions, agent hand-offs) and live replay
 tests/
   SecondGuess.Tests/       Unit tests for the models, generator and simulation
 data/                      Generated matches (match.json + events.jsonl per match)
@@ -156,6 +164,9 @@ dotnet run --project src/SecondGuess.Generator -- whatif --match data/m_42
 
 # Run the tests
 dotnet test SecondGuess.slnx
+
+# Run the web app (studio and live pages)
+dotnet run --project src/SecondGuess.Web
 ```
 
 The same seed always produces the same match, so demos are reproducible.
@@ -234,11 +245,11 @@ npx @modelcontextprotocol/inspector dotnet run --project src/SecondGuess.McpServ
 ## Multi-agent system
 
 `SecondGuess.Agents` answers a viewer's question with five specialist agents that share one session
-and hand work to each other:
+and hand work to each other. A sixth, the **Recapper**, writes live recaps (see [Live match feed](#live-match-feed)).
 
 ```
-Viewer question ──► Moment Finder ──► Simulator ──► Explainer ◄──► Fact-Checker ──► Localiser ──► Answer
-                    (LLM + MCP tools)  (MCP, exact)   (LLM)        (deterministic)    (LLM)
+Viewer question ──► Moment Finder ──► Simulator ──► Explainer ◄──► Fact-Checker ──► Localiser ◄──► Fact-Checker ──► Answer
+                    (LLM + MCP tools)  (MCP, exact)   (LLM)        (deterministic)    (LLM)        (deterministic)
 ```
 
 | Agent | Built with | Role |
@@ -247,7 +258,7 @@ Viewer question ──► Moment Finder ──► Simulator ──► Explainer 
 | **Simulator** | Direct MCP tool call (`simulate_options`) | Runs the deterministic what-if engine; if the moment can't be simulated, sends the error back to the Moment Finder |
 | **Explainer** | Agent Framework agent | Writes the answer for **Fan** or **Expert** mode, from the viewer's favourite team's point of view |
 | **Fact-Checker** | Deterministic code (`AnswerFactChecker`) | Checks every percentage, distance and number against the simulation and requires the source event ID; failures go back to the Explainer (up to 3 attempts) |
-| **Localiser** | Agent Framework agent | Translates the checked answer; the Fact-Checker then confirms every number survived translation |
+| **Localiser** | Agent Framework agent | Translates the checked answer; the Fact-Checker confirms every number survived. After two failed attempts the checked English answer is shown, with a note, so an unverified translation is never presented as fact-checked |
 
 **Why a fact-checker in code?** Because the simulation is deterministic, every number in an answer can be
 verified exactly. A language model can't "talk its way" past the check, which makes answers trustworthy
@@ -264,7 +275,8 @@ Every hand-off is recorded in a trace (agent, action, result, duration), printed
    $env:AZURE_OPENAI_ENDPOINT = "https://<your-resource>.openai.azure.com/"
    $env:AZURE_OPENAI_DEPLOYMENT = "gpt-4.1-mini"
    ```
-   No API key is needed: the agents use your Azure sign-in (`DefaultAzureCredential`).
+   No API key is needed. On your machine the agents sign in with your `az login` account; in Azure they use
+   the Container App's managed identity. The app prints which one it used when the agents start.
 
 ### Ask a question
 
@@ -278,7 +290,7 @@ dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should h
 
 `SecondGuess.Web` is a Blazor Server app styled like a broadcast telestrator:
 
-- **The frozen moment** on the attacking half of the pitch, with all 22 players in team colours.
+- **The frozen moment** on a full pitch, with all 22 players in team colours and their names on hover.
 - **The decision taken** as a dashed blue line, and **the best alternative drawn in marker yellow** when the agents answer.
 - **Every option the engine simulated**, as bars with P10–P90 ranges.
 - **Ask the agents** in plain language, in **Fan** or **Expert** mode, in eight languages, from your team's point of view.
@@ -286,7 +298,7 @@ dotnet run --project src/SecondGuess.Agents.Cli -- "Which shot in m_100 should h
   fact-checked answer is read back in that language. It uses the browser's own speech services (Edge, Chrome),
   so it needs no keys; in other browsers the voice buttons stay hidden and everything else works.
 - **The fact-check result** and **every agent hand-off**, so viewers can see how the answer was produced.
-- **Decisions worth a second look:** the shots in the match where another option was better, one click to load.
+- **Decisions worth a second look:** the six shots where another option was worth the most, in match order, one click to load.
 
 Without Azure settings the app still works: you can explore every moment and its simulation; only the
 question box needs the agents.
@@ -337,10 +349,10 @@ it was written from, sends mistakes back for a rewrite, and checks the translati
 
 ## Try it
 
-**Live demo:**: https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/
+**Live demo:** https://YOUR-APP-URL · free, no sign-in needed. Use Edge or Chrome for voice.
 
-1. Open the **Studio**, pick a moment from the strip (for example Quin Abara's shot at 44:44 in match `m_100`).
-2. Ask *"What was his best option?"*, or type your own question, and pick a language and a viewpoint.
+1. Open the **Studio** and pick a moment from the strip. Each card shows the shot's value and the better option.
+2. Ask *"What was his best option?"*, press 🎤 and ask out loud, or type your own question. Pick a language and a viewpoint.
 3. Watch the agents work step by step, then read the verdict on the pitch.
 4. Open **Live** to replay a match with live stats, the Control vs Chaos index and the recap.
 
