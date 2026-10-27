@@ -8,8 +8,7 @@ and explain, in plain language, how it would have changed the game.
 > Built for the Microsoft *Inside the Game* Developer Hackathon.
 > All teams, players and matches are synthetic and invented.
 
-**[▶ Live demo](https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/)** · **[🎬 Demo video](https://YOUR-VIDEO-URL)** · [Try it](#try-it) · [Architecture](#architecture)
-<!-- Replace YOUR-VIDEO-URL before submitting. -->
+**[▶ Live demo](https://second-guess.proudwave-0426be42.centralus.azurecontainerapps.io/)** · **[🎬 Demo video](https://www.youtube.com/watch?v=30HxvyZBeZs)** · [Try it](#try-it) · [Architecture](#architecture)
 
 ## What this project does
 
